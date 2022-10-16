@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changesets/1_create-tables.yaml
+  - include:
+      file: db/changelog/changesets/2_populate-regions-table.sql

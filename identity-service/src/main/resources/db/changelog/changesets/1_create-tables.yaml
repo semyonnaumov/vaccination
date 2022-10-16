@@ -1,0 +1,189 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tables
+      author: Semyon Naumov
+      changes:
+        - createTable:
+            tableName: regions
+            remarks: All regions in Russia
+            columns:
+              - column:
+                  name: id
+                  type: int8
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+        - createSequence:
+            sequenceName: people_seq
+            startValue: 1
+            incrementBy: 10
+        - createTable:
+            tableName: people
+            remarks: Vaccinated people
+            columns:
+              - column:
+                  name: id
+                  type: int8
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: full_name
+                  type: varchar(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: date_of_birth
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_hidden
+                  type: boolean
+                  constraints:
+                    nullable: false
+        - createSequence:
+            sequenceName: addresses_seq
+            startValue: 1
+            incrementBy: 10
+        - createTable:
+            tableName: addresses
+            remarks: Vaccinated people addresses table
+            columns:
+              - column:
+                  name: id
+                  type: int8
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: region_id
+                  type: int8
+                  constraints:
+                    foreignKeyName: region_id_fk
+                    referencedTableName: regions
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: address
+                  type: varchar(250)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: addresses
+            columnNames: region_id, address
+            constraintName: region_id_address_uk
+        - createSequence:
+            sequenceName: people_addresses_seq
+            startValue: 1
+            incrementBy: 10
+        - createTable:
+            tableName: people_addresses
+            remarks: Join table for people to addresses many-to-many relationship
+            columns:
+              - column:
+                  name: id
+                  type: int8
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: person_id
+                  type: int8
+                  constraints:
+                    foreignKeyName: person_id_fk
+                    referencedTableName: people
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: address_id
+                  type: int8
+                  constraints:
+                    foreignKeyName: address_id_fk
+                    referencedTableName: addresses
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: is_registration
+                  type: boolean
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            constraintName: person_id_address_id_uk
+            tableName: people_addresses
+            columnNames: person_id, address_id
+            # add trigger for only one registration address for a person validation
+        - createSequence:
+            sequenceName: contacts_seq
+            startValue: 1
+            incrementBy: 10
+        - createTable:
+            tableName: contacts
+            remarks: People contacts table
+            columns:
+              - column:
+                  name: id
+                  type: int8
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: owner_id
+                  type: int8
+                  constraints:
+                    foreignKeyName: contact_owner_id_fk
+                    referencedTableName: people
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: phone_number
+                  type: varchar(12)
+                  constraints:
+                    nullable: false
+                    unique: true
+        - createSequence:
+            sequenceName: identity_documents_seq
+            startValue: 1
+            incrementBy: 10
+        - createTable:
+            tableName: identity_documents
+            remarks: Documents used to identify a person
+            columns:
+              - column:
+                  name: id
+                  type: int8
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: type
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: full_number
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: issue_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: int8
+                  constraints:
+                    foreignKeyName: document_owner_id_fk
+                    referencedTableName: people
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: is_primary
+                  type: boolean
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            constraintName: type_full_number_uk
+            tableName: identity_documents
+            columnNames: type, full_number
