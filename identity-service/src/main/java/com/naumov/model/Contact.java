@@ -1,7 +1,6 @@
 package com.naumov.model;
 
 import lombok.*;
-import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 
@@ -21,6 +20,14 @@ public class Contact {
     @JoinColumn(name = "owner_id", nullable = false)
     private Person owner;
     @Column(name = "phone_number", length = 12, nullable = false, unique = true)
-    @Type(type = "")
     private String phoneNumber;
+
+    @Override
+    public String toString() {
+        return "Contact{" +
+                "id=" + id +
+                ", ownerId=" + (owner != null ? owner.getId() : null) +
+                ", phoneNumber='" + phoneNumber + '\'' +
+                '}';
+    }
 }

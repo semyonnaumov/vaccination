@@ -26,4 +26,14 @@ public class PersonAddress {
     private Address address;
     @Column(name = "is_registration", nullable = false)
     private Boolean isRegistration;
+
+    @Override
+    public String toString() {
+        return "PersonAddress{" +
+                "id=" + id +
+                ", personId=" + (person != null ? person.getId() : null) +
+                ", addressId=" + (address != null ? address.getId() : null) +
+                ", isRegistration=" + isRegistration +
+                '}';
+    }
 }

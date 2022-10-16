@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 public class DtoConverter {
 
     // -------------------------------------------- "From" mappings ----------------------------------------------------
-    // TODO from create TRANSIENT entity instances!
     public Person fromPersonCreateRequest(PersonCreateRequest personCreateRequest) {
         if (personCreateRequest == null) return null;
         List<AddressCreateRequest> addressCreateRequests = personCreateRequest.getAddresses();

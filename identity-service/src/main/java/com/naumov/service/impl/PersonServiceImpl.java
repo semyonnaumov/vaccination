@@ -1,17 +1,18 @@
 package com.naumov.service.impl;
 
+import com.naumov.exception.EntityNotFoundException;
+import com.naumov.exception.PersonConsistencyException;
 import com.naumov.model.Address;
 import com.naumov.model.Person;
 import com.naumov.model.PersonAddress;
 import com.naumov.repository.AddressRepository;
-import com.naumov.repository.ContactRepository;
-import com.naumov.repository.IdentityDocumentRepository;
 import com.naumov.repository.PersonRepository;
 import com.naumov.service.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -20,45 +21,45 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-// TODO revise this service
 public class PersonServiceImpl implements PersonService {
     private final PersonRepository personRepository;
     private final AddressRepository addressRepository;
-    private final ContactRepository contactRepository;
-    private final IdentityDocumentRepository idRepo;
 
     @Autowired
     public PersonServiceImpl(PersonRepository personRepository,
-                             AddressRepository addressRepository,
-                             ContactRepository contactRepository,
-                             IdentityDocumentRepository idRepo) {
+                             AddressRepository addressRepository) {
         this.personRepository = personRepository;
         this.addressRepository = addressRepository;
-        this.contactRepository = contactRepository;
-        this.idRepo = idRepo;
     }
 
+    /*
+     * Person creation scenario:
+     * We cannot save everything cascadely since some addresses may already exist, and the request will end
+     * up with unique constraint violation exception. Hence, we need to process addresses separately.
+     *
+     * 1. Extract all addresses from transient person entity
+     *    -> list of transient Address entities
+     * 2. Validate the person has exactly one registration address
+     * 3. Load all existing Address entities, save all new address entities. While saving the Address,
+     *    associated PersonAddress entities will not be updated, since we haven't saved the Person yet.
+     *    -> list of saved Address entities
+     * 3. Re-create a list of PersonAddress entities from saved Address records, add them to Person ->
+     *    -> transient Person ready to be saved
+     * 4. Save the Person entity. PersonAddress,Contact and IdentityDocument entities will be saved cascadely.
+     *    Unique constraint violation exceptions (phone # and ID) may occur - the transaction will be rolled back.
+     * */
+    // TODO add tests
     @Override
-    @Transactional
-    public Person createPerson(Person newPerson) {
-        if (newPerson == null) throw new IllegalArgumentException("Argument newPerson cannot be null");
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Person createPerson(Person transientPerson) {
+        if (transientPerson == null) throw new PersonConsistencyException("Person cannot be null");
 
-        fetchOrSaveAddresses(newPerson);
-        // todo find out what to do with these
-//        fetchOrSaveContacts(newPerson);
-//        fetchOrSaveIdentityDocuments(newPerson);
+        List<Pair<Address, Boolean>> transientAddressPairs = extractAddresses(transientPerson);
+        validateUniqueRegistrationAddress(transientAddressPairs);
+        List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(transientAddressPairs);
+        updatePersonAddresses(transientPerson, savedAddresses);
 
-        return personRepository.save(newPerson);
-    }
-
-    // newly come addresses may already exist in the DB
-    // we need to find them by unique fields and fetch from DB with ids
-    // and merge them with other addresses
-    private void fetchOrSaveAddresses(Person person) {
-        List<Pair<Address, Boolean>> addresses = extractAddresses(person);
-        List<Pair<Address, Boolean>> persistedAddresses = updateRawAddresses(addresses);
-        List<PersonAddress> addressRecords = createAddressRecords(person, persistedAddresses);
-        person.setAddressRecords(addressRecords);
+        return personRepository.save(transientPerson); // all association are saved using cascade
     }
 
     private List<Pair<Address, Boolean>> extractAddresses(Person person) {
@@ -68,15 +69,123 @@ public class PersonServiceImpl implements PersonService {
                 .collect(Collectors.toList());
     }
 
-    private List<Pair<Address, Boolean>> updateRawAddresses(List<Pair<Address, Boolean>> rawAddresses) {
-        List<Pair<Address, Boolean>> persistedAddresses = new ArrayList<>();
-        for (Pair<Address, Boolean> rawAddressPair : rawAddresses) {
-            Address persistedAddress = findAddress(rawAddressPair.getFirst());
-            persistedAddress = persistedAddress != null ? persistedAddress : addressRepository.save(rawAddressPair.getFirst());
-            persistedAddresses.add(Pair.of(persistedAddress, rawAddressPair.getSecond()));
+    private void validateUniqueRegistrationAddress(List<Pair<Address, Boolean>> transientAddressPairs) {
+        long count = transientAddressPairs.stream()
+                .map(Pair::getSecond)
+                .filter(e -> e)
+                .count();
+
+        if (count != 1) {
+            throw new PersonConsistencyException("Person cannot have multiple on no registration addresses");
+        }
+    }
+
+    private List<Pair<Address, Boolean>> saveOrLoadAddresses(List<Pair<Address, Boolean>> transientAddressPairs) {
+        List<Pair<Address, Boolean>> savedAddresses = new ArrayList<>();
+        for (Pair<Address, Boolean> transientAddressPair : transientAddressPairs) {
+            Address savedAddress = saveOrLoadAddress(transientAddressPair.getFirst());
+            savedAddresses.add(Pair.of(savedAddress, transientAddressPair.getSecond()));
         }
 
-        return persistedAddresses;
+        return savedAddresses;
+    }
+
+    private Address saveOrLoadAddress(Address transientAddress) {
+        if (transientAddress == null ||
+                transientAddress.getRegion() == null ||
+                transientAddress.getRegion().getName() == null ||
+                transientAddress.getAddress() == null) {
+            throw new PersonConsistencyException("Address is incorrect to be used in a search");
+        }
+
+        // transientAddress may have an id
+        if (transientAddress.getId() != null) {
+            return addressRepository.findById(transientAddress.getId()).orElseThrow(() ->
+                    new PersonConsistencyException("Cannot find address with id=" + transientAddress.getId()));
+        }
+
+        return addressRepository.findByRegionNameAndAddress(transientAddress.getRegion().getName(),
+                transientAddress.getAddress()).orElse(addressRepository.save(transientAddress)); // save here doesn't trigger any related entity save
+    }
+
+    private void updatePersonAddresses(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
+        List<PersonAddress> updatedPersonAddresses = savedAddresses.stream()
+                .map(pair -> PersonAddress.builder()
+                        .person(transientPerson)
+                        .address(pair.getFirst())
+                        .isRegistration(pair.getSecond())
+                        .build())
+                .collect(Collectors.toList());
+
+        transientPerson.setAddressRecords(updatedPersonAddresses);
+    }
+
+    // TODO add tests
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Person getPerson(long personId) {
+        return personRepository.findById(personId)
+                .orElseThrow(() -> new EntityNotFoundException("Person with id=" + personId + " does not exist"));
+    }
+
+    // TODO add tests
+    @Override
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public List<Person> getPeople(String regionName, int pageNumber, int pageSize) {
+        List<Integer> pagePeopleIds = personRepository.findAllIdsByRegistrationRegion(regionName,
+                Pageable.ofSize(pageSize).withPage(pageNumber));
+
+        return personRepository.findAllByIds(pagePeopleIds);
+    }
+
+    // TODO add tests
+    @Override
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public List<Person> getPeople(int pageNumber, int pageSize) {
+        return personRepository.findAll(Pageable.ofSize(pageSize).withPage(pageNumber)).getContent();
+    }
+
+    // TODO add tests
+    @Override
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public boolean verifyPassport(String fullName, String passportNumber) {
+        // TODO implement
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    // TODO add tests
+    @Override
+    @Transactional
+    public Person updatePerson(Person updatedPerson) {
+        // TODO implement
+        throw new UnsupportedOperationException("Not implemented");
+//
+//        Person persistedPerson = personRepository.findById(updatedPerson.getId()).orElseThrow(() ->
+//                new IllegalStateException("Cannot find user with id=" + updatedPerson.getId()));
+//
+//        persistedPerson.setName(updatedPerson.getName());
+//        persistedPerson.setDateOfBirth(updatedPerson.getDateOfBirth());
+//        persistedPerson.setIsHidden(updatedPerson.getIsHidden());
+//        persistedPerson.setAddressRecords(updatedPerson.getAddressRecords());
+//        persistedPerson.setContacts(updatedPerson.getContacts());
+//        persistedPerson.setIdentityDocuments(updatedPerson.getIdentityDocuments());
+//
+//        List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(persistedPerson);
+//        // todo find out what to do with these
+////        fetchOrSaveContacts(persistedPerson);
+////        fetchOrSaveIdentityDocuments(persistedPerson);
+//
+//        return personRepository.save(persistedPerson);
+    }
+
+    private List<PersonAddress> updateAddressRecords(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
+        return savedAddresses.stream()
+                .map(p -> PersonAddress.builder()
+                        .person(transientPerson)
+                        .address(p.getFirst())
+                        .isRegistration(p.getSecond())
+                        .build()
+                ).toList();
     }
 
 //    private <E> List<E> updateRawEntities(Collection<E> rawEntities,
@@ -91,32 +200,6 @@ public class PersonServiceImpl implements PersonService {
 //
 //        return persistedEntities;
 //    }
-
-    private List<PersonAddress> createAddressRecords(Person newPerson, List<Pair<Address, Boolean>> addresses) {
-        return addresses.stream()
-                .map(p -> PersonAddress.builder()
-                        .person(newPerson)
-                        .address(p.getFirst())
-                        .isRegistration(p.getSecond())
-                        .build()
-                ).toList();
-    }
-
-    private Address findAddress(Address rawAddress) {
-        if (rawAddress == null ||
-                rawAddress.getRegion() == null ||
-                rawAddress.getRegion().getName() == null ||
-                rawAddress.getAddress() == null) {
-            throw new IllegalStateException("Address entity is incorrect to be used in a search");
-        }
-
-        if (rawAddress.getId() != null) {
-            return addressRepository.findById(rawAddress.getId()).orElseThrow(() ->
-                    new IllegalStateException("Cannot find user with id=" + rawAddress.getId()));
-        }
-
-        return addressRepository.findByRegionNameAndAddress(rawAddress.getRegion().getName(), rawAddress.getAddress());
-    }
 
 //    private void fetchOrSaveContacts(Person newPerson) {
 //        List<Contact> contacts = Optional.of(newPerson.getContacts()).orElse(new ArrayList<>());
@@ -147,50 +230,4 @@ public class PersonServiceImpl implements PersonService {
 //
 //        return idRepo.findByTypeAndFullNumber(rawId.getType(), rawId.getFullNumber());
 //    }
-
-    @Override
-    @Transactional
-    public Person updatePerson(Person updatedPerson) {
-        Person persistedPerson = personRepository.findById(updatedPerson.getId()).orElseThrow(() ->
-                new IllegalStateException("Cannot find user with id=" + updatedPerson.getId()));
-
-        persistedPerson.setName(updatedPerson.getName());
-        persistedPerson.setDateOfBirth(updatedPerson.getDateOfBirth());
-        persistedPerson.setIsHidden(updatedPerson.getIsHidden());
-        persistedPerson.setAddressRecords(updatedPerson.getAddressRecords());
-        persistedPerson.setContacts(updatedPerson.getContacts());
-        persistedPerson.setIdentityDocuments(updatedPerson.getIdentityDocuments());
-
-        fetchOrSaveAddresses(persistedPerson);
-        // todo find out what to do with these
-//        fetchOrSaveContacts(persistedPerson);
-//        fetchOrSaveIdentityDocuments(persistedPerson);
-
-        return personRepository.save(persistedPerson);
-    }
-
-    @Override
-    public Person getPerson(long personId) {
-        return personRepository.findById(personId).orElse(null);
-    }
-
-    @Override
-    public List<Person> getPeople(int pageNumber, int pageSize) {
-        return personRepository.findAll(Pageable.ofSize(pageSize).withPage(pageNumber)).getContent();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Person> getPeople(String regionName, int pageNumber, int pageSize) {
-        List<Integer> pagePeopleIds = personRepository.findAllIdsByRegistrationRegion(regionName,
-                Pageable.ofSize(pageSize).withPage(pageNumber));
-
-        return personRepository.findByIds(pagePeopleIds);
-    }
-
-    // todo
-    @Override
-    public boolean verifyPassport(String fullName, String passportNumber) {
-        return false;
-    }
 }

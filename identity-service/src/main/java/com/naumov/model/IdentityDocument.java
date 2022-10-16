@@ -33,6 +33,18 @@ public class IdentityDocument {
     @Column(name = "is_primary", nullable = false)
     private Boolean isPrimary;
 
+    @Override
+    public String toString() {
+        return "IdentityDocument{" +
+                "id=" + id +
+                ", type=" + type +
+                ", fullNumber='" + fullNumber + '\'' +
+                ", issueDate=" + issueDate +
+                ", ownerId=" + (owner != null ? owner.getId() : null) +
+                ", isPrimary=" + isPrimary +
+                '}';
+    }
+
     public enum DocumentType {
         INNER_PASSPORT,
         INTERNATIONAL_PASSPORT,

@@ -19,11 +19,22 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "address_gen")
     @SequenceGenerator(name = "address_gen", sequenceName = "addresses_seq", allocationSize = 10)
     private Long id;
-    @ManyToOne(cascade = CascadeType.ALL) // todo cascade?
+    @ManyToOne
     @JoinColumn(name = "region_id", nullable = false)
     private Region region;
     @Column(length = 255, nullable = false)
     private String address;
-    @OneToMany(mappedBy = "address", cascade = CascadeType.ALL) // todo cascade?
+    // REMOVE is used since we persist PersonAddress through Person
+    @OneToMany(mappedBy = "address", cascade = CascadeType.REMOVE, fetch = FetchType.EAGER)
     private List<PersonAddress> personRecords;
+
+    @Override
+    public String toString() {
+        return "Address{" +
+                "id=" + id +
+                ", region=" + region +
+                ", address='" + address + '\'' +
+                ", personRecords=" + personRecords +
+                '}';
+    }
 }

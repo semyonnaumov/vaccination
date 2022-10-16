@@ -24,10 +24,23 @@ public class Person {
     private LocalDate dateOfBirth;
     @Column(name = "is_hidden", nullable = false)
     private Boolean isHidden;
-    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL) // todo cascade?
+    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL)
     private List<PersonAddress> addressRecords;
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL) // todo cascade?
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     private List<Contact> contacts;
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL) // todo cascade?
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     private List<IdentityDocument> identityDocuments;
+
+    @Override
+    public String toString() {
+        return "Person{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", dateOfBirth=" + dateOfBirth +
+                ", isHidden=" + isHidden +
+                ", addressRecords=" + addressRecords +
+                ", contacts=" + contacts +
+                ", identityDocuments=" + identityDocuments +
+                '}';
+    }
 }

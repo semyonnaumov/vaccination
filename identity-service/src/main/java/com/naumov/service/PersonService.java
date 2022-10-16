@@ -11,9 +11,9 @@ public interface PersonService {
 
     Person getPerson(long personId);
 
-    List<Person> getPeople(int pageNumber, int pageSize);
-
     List<Person> getPeople(String region, int pageNumber, int pageSize);
+
+    List<Person> getPeople(int pageNumber, int pageSize);
 
     boolean verifyPassport(String fullName, String passport);
 }
