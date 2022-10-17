@@ -4,6 +4,9 @@ import lombok.*;
 
 import javax.persistence.*;
 
+import static com.naumov.util.JsonUtil.extractId;
+import static com.naumov.util.JsonUtil.translateEscapes;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -11,7 +14,7 @@ import javax.persistence.*;
 @Builder
 @Entity
 @Table(name = "contacts")
-public class Contact {
+public class Contact implements IdentifiableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "contacts_gen")
     @SequenceGenerator(name = "contacts_gen", sequenceName = "contacts_seq", allocationSize = 10)
@@ -24,10 +27,10 @@ public class Contact {
 
     @Override
     public String toString() {
-        return "Contact{" +
-                "id=" + id +
-                ", ownerId=" + (owner != null ? owner.getId() : null) +
-                ", phoneNumber='" + phoneNumber + '\'' +
-                '}';
+        return "{" +
+                "\"id\":" + id +
+                ",\"ownerId\":" + extractId(owner) +
+                ",\"phoneNumber\":\"" + translateEscapes(phoneNumber) + "\"" +
+                "}";
     }
 }

@@ -5,6 +5,8 @@ import lombok.*;
 import javax.persistence.*;
 import java.time.LocalDate;
 
+import static com.naumov.util.JsonUtil.*;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -15,7 +17,7 @@ import java.time.LocalDate;
         name = "identity_documents",
         uniqueConstraints = @UniqueConstraint(name = "type_full_number_uk", columnNames = {"type", "full_number"})
 )
-public class IdentityDocument {
+public class IdentityDocument implements IdentifiableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "identity_documents_gen")
     @SequenceGenerator(name = "identity_documents_gen", sequenceName = "identity_documents_seq", allocationSize = 10)
@@ -35,14 +37,14 @@ public class IdentityDocument {
 
     @Override
     public String toString() {
-        return "IdentityDocument{" +
-                "id=" + id +
-                ", type=" + type +
-                ", fullNumber='" + fullNumber + '\'' +
-                ", issueDate=" + issueDate +
-                ", ownerId=" + (owner != null ? owner.getId() : null) +
-                ", isPrimary=" + isPrimary +
-                '}';
+        return "{" +
+                "\"id\":" + id +
+                ",\"type\":\"" + type + "\"" +
+                ",\"fullNumber\":\"" + translateEscapes(fullNumber) + "\"" +
+                ",\"issueDate\":\"" + convertLocalDate(issueDate) + "\"" +
+                ",\"ownerId\":" + extractId(owner) +
+                ",\"isPrimary\":" + isPrimary +
+                "}";
     }
 
     public enum DocumentType {

@@ -5,6 +5,8 @@ import lombok.*;
 import javax.persistence.*;
 import java.util.List;
 
+import static com.naumov.util.JsonUtil.translateEscapes;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -14,7 +16,7 @@ import java.util.List;
 @Table(name = "addresses", uniqueConstraints = {
         @UniqueConstraint(name = "region_address_uk", columnNames = {"region_id", "address"})
 })
-public class Address {
+public class Address implements IdentifiableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "address_gen")
     @SequenceGenerator(name = "address_gen", sequenceName = "addresses_seq", allocationSize = 10)
@@ -30,11 +32,11 @@ public class Address {
 
     @Override
     public String toString() {
-        return "Address{" +
-                "id=" + id +
-                ", region=" + region +
-                ", address='" + address + '\'' +
-                ", personRecords=" + personRecords +
-                '}';
+        return "{" +
+                "\"id\":" + id +
+                ",\"region\":" + region +
+                ",\"address\":\"" + translateEscapes(address) + "\"" +
+                ",\"personRecords\":" + personRecords +
+                "}";
     }
 }

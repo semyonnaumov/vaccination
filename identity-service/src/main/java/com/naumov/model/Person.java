@@ -6,6 +6,9 @@ import javax.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
+import static com.naumov.util.JsonUtil.convertLocalDate;
+import static com.naumov.util.JsonUtil.translateEscapes;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -13,7 +16,7 @@ import java.util.List;
 @Builder
 @Entity
 @Table(name = "people")
-public class Person {
+public class Person implements IdentifiableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "people_gen")
     @SequenceGenerator(name = "people_gen", sequenceName = "people_seq", allocationSize = 10)
@@ -33,14 +36,14 @@ public class Person {
 
     @Override
     public String toString() {
-        return "Person{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", dateOfBirth=" + dateOfBirth +
-                ", isHidden=" + isHidden +
-                ", addressRecords=" + addressRecords +
-                ", contacts=" + contacts +
-                ", identityDocuments=" + identityDocuments +
-                '}';
+        return "{" +
+                "\"id\":" + id +
+                ",\"name\":\"" + translateEscapes(name) + "\"" +
+                ",\"dateOfBirth\":\"" + convertLocalDate(dateOfBirth) + "\"" +
+                ",\"isHidden\":" + isHidden +
+                ",\"addressRecords\":" + addressRecords +
+                ",\"contacts\":" + contacts +
+                ",\"identityDocuments\":" + identityDocuments +
+                "}";
     }
 }

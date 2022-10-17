@@ -7,6 +7,8 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import static com.naumov.util.JsonUtil.translateEscapes;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -14,7 +16,7 @@ import javax.persistence.Table;
 @Builder
 @Entity
 @Table(name = "regions")
-public class Region {
+public class Region implements IdentifiableEntity {
     @Id
     private Long id;
     @Column(nullable = false, unique = true)
@@ -22,9 +24,9 @@ public class Region {
 
     @Override
     public String toString() {
-        return "Region{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                '}';
+        return "{" +
+                "\"id\":" + id +
+                ",\"name\":\"" + translateEscapes(name) + "\"" +
+                "}";
     }
 }
