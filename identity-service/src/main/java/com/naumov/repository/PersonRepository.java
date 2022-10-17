@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
@@ -20,14 +21,14 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             LEFT OUTER JOIN FETCH p.contacts
             WHERE p.id = :id
             """)
-    Person findByIdFetchContacts(Long id);
+    Optional<Person> findByIdFetchContacts(Long id);
 
     @Query("""
             FROM Person p
             LEFT OUTER JOIN FETCH p.identityDocuments
             WHERE p.id = :id
             """)
-    Person findByIdFetchIdentityDocuments(Long id);
+    Optional<Person> findByIdFetchIdentityDocuments(Long id);
 
     // HHH000104 solution - 2 methods: findAllIdsByRegistrationRegion and findAllByIds
     @Query("SELECT p.id FROM Person p " +

@@ -1,6 +1,6 @@
 package com.naumov.service;
 
-import com.naumov.exception.PersonConsistencyException;
+import com.naumov.exception.PersonCreationException;
 import com.naumov.model.*;
 import com.naumov.repository.*;
 import org.junit.jupiter.api.Test;
@@ -181,7 +181,35 @@ class PersonServiceTest {
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
             personRepository.flush();
-        }).isInstanceOf(PersonConsistencyException.class);
+        }).isInstanceOf(PersonCreationException.class);
+    }
+
+    @Test
+    @Transactional
+    void createTwoPeopleWithTheSameDocument() {
+        Person p1 = prepareSimplePerson();
+        p1.getContacts().get(0).setPhoneNumber("+70987654321");
+        personService.createPerson(p1);
+
+        Person p2 = prepareSimplePerson();
+        assertThatThrownBy(() -> {
+            personService.createPerson(p2);
+            personRepository.flush();
+        }).isInstanceOf(PersonCreationException.class);
+    }
+
+    @Test
+    @Transactional
+    void createTwoPeopleWithTheSameContact() {
+        Person p1 = prepareSimplePerson();
+        p1.getIdentityDocuments().get(0).setType(IdentityDocument.DocumentType.PENSION_ID);
+        personService.createPerson(p1);
+
+        Person p2 = prepareSimplePerson();
+        assertThatThrownBy(() -> {
+            personService.createPerson(p2);
+            personRepository.flush();
+        }).isInstanceOf(PersonCreationException.class);
     }
 
     private Person prepareSimplePerson() {

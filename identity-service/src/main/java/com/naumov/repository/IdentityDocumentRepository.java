@@ -6,8 +6,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface IdentityDocumentRepository extends JpaRepository<IdentityDocument, Long> {
-    IdentityDocument findByTypeAndFullNumber(IdentityDocument.DocumentType type, String fullNumber);
+    Optional<IdentityDocument> findByTypeAndFullNumber(IdentityDocument.DocumentType type, String fullNumber);
 }

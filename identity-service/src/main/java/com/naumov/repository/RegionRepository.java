@@ -6,8 +6,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface RegionRepository extends JpaRepository<Region, Long> {
-    Region findByName(String name);
+    Optional<Region> findByName(String name);
 }

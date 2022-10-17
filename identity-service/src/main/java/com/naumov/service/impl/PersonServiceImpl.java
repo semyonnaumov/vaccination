@@ -1,12 +1,11 @@
 package com.naumov.service.impl;
 
 import com.naumov.exception.EntityNotFoundException;
-import com.naumov.exception.PersonConsistencyException;
-import com.naumov.model.Address;
-import com.naumov.model.IdentityDocument;
-import com.naumov.model.Person;
-import com.naumov.model.PersonAddress;
+import com.naumov.exception.PersonCreationException;
+import com.naumov.model.*;
 import com.naumov.repository.AddressRepository;
+import com.naumov.repository.ContactRepository;
+import com.naumov.repository.IdentityDocumentRepository;
 import com.naumov.repository.PersonRepository;
 import com.naumov.service.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,12 +24,18 @@ import java.util.stream.Collectors;
 public class PersonServiceImpl implements PersonService {
     private final PersonRepository personRepository;
     private final AddressRepository addressRepository;
+    private final ContactRepository contactRepository;
+    private final IdentityDocumentRepository identityDocumentRepository;
 
     @Autowired
     public PersonServiceImpl(PersonRepository personRepository,
-                             AddressRepository addressRepository) {
+                             AddressRepository addressRepository,
+                             ContactRepository contactRepository,
+                             IdentityDocumentRepository identityDocumentRepository) {
         this.personRepository = personRepository;
         this.addressRepository = addressRepository;
+        this.contactRepository = contactRepository;
+        this.identityDocumentRepository = identityDocumentRepository;
     }
 
     /*
@@ -52,11 +57,12 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public Person createPerson(Person transientPerson) {
-        if (transientPerson == null) throw new PersonConsistencyException("Person cannot be null");
+        if (transientPerson == null) throw new PersonCreationException("Person cannot be null");
 
         List<Pair<Address, Boolean>> transientAddressPairs = extractAddresses(transientPerson);
         validateUniqueRegistrationAddress(transientPerson.getAddressRecords());
-        validateExactlyOnePrimaryIdentityDocument(transientPerson.getIdentityDocuments());
+        validateIdentityDocuments(transientPerson.getIdentityDocuments());
+        validateContacts(transientPerson.getContacts());
         List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(transientAddressPairs);
         updatePersonAddresses(transientPerson, savedAddresses);
 
@@ -77,7 +83,18 @@ public class PersonServiceImpl implements PersonService {
                 .count();
 
         if (count > 1) {
-            throw new PersonConsistencyException("Person cannot have multiple registration addresses");
+            throw new PersonCreationException("Person cannot have multiple registration addresses");
+        }
+    }
+
+    private void validateIdentityDocuments(List<IdentityDocument> identityDocuments) {
+        validateExactlyOnePrimaryIdentityDocument(identityDocuments);
+
+        for (IdentityDocument id : identityDocuments) {
+            if (identityDocumentRepository.findByTypeAndFullNumber(id.getType(), id.getFullNumber()).isPresent()) {
+                throw new PersonCreationException("Person's identity document with type " + id.getType()
+                        + " and full number " + id.getFullNumber() + " already exists");
+            }
         }
     }
 
@@ -87,7 +104,20 @@ public class PersonServiceImpl implements PersonService {
                 .count();
 
         if (count != 1) {
-            throw new PersonConsistencyException("Person must have exactly one registration address");
+            throw new PersonCreationException("Person must have exactly one registration address");
+        }
+    }
+
+    private void validateContacts(List<Contact> contacts) {
+        if (contacts == null) return;
+        List<String> phoneNumbers = contacts.stream()
+                .map(Contact::getPhoneNumber)
+                .collect(Collectors.toList());
+
+        List<Contact> existingPhoneNumbers = contactRepository.findAllByPhoneNumberIn(phoneNumbers);
+        if (!existingPhoneNumbers.isEmpty()) {
+            throw new PersonCreationException("Person's phone number " + existingPhoneNumbers.get(0).getPhoneNumber()
+                    + " already exists");
         }
     }
 
@@ -106,13 +136,14 @@ public class PersonServiceImpl implements PersonService {
                 transientAddress.getRegion() == null ||
                 transientAddress.getRegion().getName() == null ||
                 transientAddress.getAddress() == null) {
-            throw new PersonConsistencyException("Address is incorrect to be used in a search");
+            throw new PersonCreationException("Person address must not be null and must contain region and address line");
         }
 
         // transientAddress may have an id
         if (transientAddress.getId() != null) {
             return addressRepository.findById(transientAddress.getId()).orElseThrow(() ->
-                    new PersonConsistencyException("Cannot find address with id=" + transientAddress.getId()));
+                    new PersonCreationException("A person address, provided with id=" + transientAddress.getId() +
+                            " cannot be found"));
         }
 
         return addressRepository.findByRegionNameAndAddress(
