@@ -3,10 +3,10 @@ package com.naumov.dto.rq;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.naumov.dto.validation.annotation.NullableBoolean;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.time.LocalDate;
@@ -32,6 +32,7 @@ public class PersonCreateRequest {
     private List<ContactCreateRequest> contacts;
     @NotNull
     @JsonProperty("identity_documents")
+    @NotEmpty
     private List<IdentityDocumentCreateRequest> identityDocuments;
 
     public PersonCreateRequest() {

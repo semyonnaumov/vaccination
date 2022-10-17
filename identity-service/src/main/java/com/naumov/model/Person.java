@@ -27,7 +27,7 @@ public class Person implements IdentifiableEntity {
     private LocalDate dateOfBirth;
     @Column(name = "is_hidden", nullable = false)
     private Boolean isHidden;
-    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "person", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<PersonAddress> addressRecords;
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     private List<Contact> contacts;

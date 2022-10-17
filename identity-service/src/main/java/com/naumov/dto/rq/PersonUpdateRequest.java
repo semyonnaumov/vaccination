@@ -7,6 +7,7 @@ import com.naumov.dto.validation.annotation.NullableBoolean;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +26,7 @@ public class PersonUpdateRequest extends IdentifiableEntity {
     private List<AddressUpdateRequest> addresses;
     private List<ContactUpdateRequest> contacts;
     @JsonProperty("identity_documents")
+    @NotEmpty
     private List<IdentityDocumentUpdateRequest> identityDocuments;
 }
 

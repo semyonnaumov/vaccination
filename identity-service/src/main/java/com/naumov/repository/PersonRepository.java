@@ -13,15 +13,32 @@ import java.util.List;
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface PersonRepository extends JpaRepository<Person, Long> {
+
+    // Two queries to sequentially load a Person object avoiding MultipleBagFetchException
+    @Query("""
+            FROM Person p
+            LEFT OUTER JOIN FETCH p.contacts
+            WHERE p.id = :id
+            """)
+    Person findByIdFetchContacts(Long id);
+
+    @Query("""
+            FROM Person p
+            LEFT OUTER JOIN FETCH p.identityDocuments
+            WHERE p.id = :id
+            """)
+    Person findByIdFetchIdentityDocuments(Long id);
+
     // HHH000104 solution - 2 methods: findAllIdsByRegistrationRegion and findAllByIds
     @Query("SELECT p.id FROM Person p " +
-            "JOIN PersonAddress pa " +
-            "JOIN Address a " +
-            "JOIN Region r " +
-            "WHERE pa.isRegistration = true AND r.name = :regionName " +
+            "JOIN p.addressRecords ar " +
+            "JOIN ar.address a " +
+            "JOIN a.region r " +
+            "WHERE ar.isRegistration = true AND r.name = :regionName " +
             "ORDER BY p.id")
-    List<Integer> findAllIdsByRegistrationRegion(String regionName, Pageable pageable);
+    List<Long> findAllIdsByRegistrationRegion(String regionName, Pageable pageable);
 
+    // TODO will be subjected to MultipleBagFetchException, redo
     @Query("FROM Person p " +
             "JOIN FETCH PersonAddress pa " +
             "JOIN FETCH Address a " +
@@ -30,5 +47,5 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "JOIN FETCH IdentityDocument id " +
             "WHERE p.id IN :ids " +
             "ORDER BY p.id")
-    List<Person> findAllByIds(List<Integer> ids);
+    List<Person> findAllByIds(List<Long> ids);
 }

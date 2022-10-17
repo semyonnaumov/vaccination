@@ -3,6 +3,7 @@ package com.naumov.service.impl;
 import com.naumov.exception.EntityNotFoundException;
 import com.naumov.exception.PersonConsistencyException;
 import com.naumov.model.Address;
+import com.naumov.model.IdentityDocument;
 import com.naumov.model.Person;
 import com.naumov.model.PersonAddress;
 import com.naumov.repository.AddressRepository;
@@ -12,10 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -48,35 +49,45 @@ public class PersonServiceImpl implements PersonService {
      * 4. Save the Person entity. PersonAddress,Contact and IdentityDocument entities will be saved cascadely.
      *    Unique constraint violation exceptions (phone # and ID) may occur - the transaction will be rolled back.
      * */
-    // TODO add tests
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public Person createPerson(Person transientPerson) {
         if (transientPerson == null) throw new PersonConsistencyException("Person cannot be null");
 
         List<Pair<Address, Boolean>> transientAddressPairs = extractAddresses(transientPerson);
-        validateUniqueRegistrationAddress(transientAddressPairs);
+        validateUniqueRegistrationAddress(transientPerson.getAddressRecords());
+        validateExactlyOnePrimaryIdentityDocument(transientPerson.getIdentityDocuments());
         List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(transientAddressPairs);
         updatePersonAddresses(transientPerson, savedAddresses);
 
-        return personRepository.save(transientPerson); // all association are saved using cascade
+        // All associations except Address entities are saved here using cascade.
+        return personRepository.save(transientPerson);
     }
 
     private List<Pair<Address, Boolean>> extractAddresses(Person person) {
-        return Optional.of(person.getAddressRecords())
+        return Optional.ofNullable(person.getAddressRecords())
                 .orElse(new ArrayList<>()).stream()
                 .map(e -> Pair.of(e.getAddress(), e.getIsRegistration()))
                 .collect(Collectors.toList());
     }
 
-    private void validateUniqueRegistrationAddress(List<Pair<Address, Boolean>> transientAddressPairs) {
-        long count = transientAddressPairs.stream()
-                .map(Pair::getSecond)
-                .filter(e -> e)
+    private void validateUniqueRegistrationAddress(List<PersonAddress> personAddresses) {
+        long count = Optional.ofNullable(personAddresses).orElse(Collections.emptyList()).stream()
+                .filter(PersonAddress::getIsRegistration)
+                .count();
+
+        if (count > 1) {
+            throw new PersonConsistencyException("Person cannot have multiple registration addresses");
+        }
+    }
+
+    private void validateExactlyOnePrimaryIdentityDocument(List<IdentityDocument> identityDocuments) {
+        long count = Optional.ofNullable(identityDocuments).orElse(Collections.emptyList()).stream()
+                .filter(IdentityDocument::getIsPrimary)
                 .count();
 
         if (count != 1) {
-            throw new PersonConsistencyException("Person cannot have multiple on no registration addresses");
+            throw new PersonConsistencyException("Person must have exactly one registration address");
         }
     }
 
@@ -104,8 +115,10 @@ public class PersonServiceImpl implements PersonService {
                     new PersonConsistencyException("Cannot find address with id=" + transientAddress.getId()));
         }
 
-        return addressRepository.findByRegionNameAndAddress(transientAddress.getRegion().getName(),
-                transientAddress.getAddress()).orElse(addressRepository.save(transientAddress)); // save here doesn't trigger any related entity save
+        return addressRepository.findByRegionNameAndAddress(
+                transientAddress.getRegion().getName(),
+                transientAddress.getAddress()
+        ).orElseGet(() -> addressRepository.save(transientAddress));
     }
 
     private void updatePersonAddresses(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
@@ -122,17 +135,18 @@ public class PersonServiceImpl implements PersonService {
 
     // TODO add tests
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(readOnly = true)
     public Person getPerson(long personId) {
+        // TODO use multiple methods to fetch lazy associations here
         return personRepository.findById(personId)
                 .orElseThrow(() -> new EntityNotFoundException("Person with id=" + personId + " does not exist"));
     }
 
     // TODO add tests
     @Override
-    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    @Transactional(readOnly = true)
     public List<Person> getPeople(String regionName, int pageNumber, int pageSize) {
-        List<Integer> pagePeopleIds = personRepository.findAllIdsByRegistrationRegion(regionName,
+        List<Long> pagePeopleIds = personRepository.findAllIdsByRegistrationRegion(regionName,
                 Pageable.ofSize(pageSize).withPage(pageNumber));
 
         return personRepository.findAllByIds(pagePeopleIds);
@@ -140,14 +154,14 @@ public class PersonServiceImpl implements PersonService {
 
     // TODO add tests
     @Override
-    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    @Transactional(readOnly = true)
     public List<Person> getPeople(int pageNumber, int pageSize) {
         return personRepository.findAll(Pageable.ofSize(pageSize).withPage(pageNumber)).getContent();
     }
 
     // TODO add tests
     @Override
-    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    @Transactional(readOnly = true)
     public boolean verifyPassport(String fullName, String passportNumber) {
         // TODO implement
         throw new UnsupportedOperationException("Not implemented");
