@@ -41,26 +41,29 @@ public class PersonController {
         this.dtoConverter = dtoConverter;
     }
 
+    // TODO add test
     @PostMapping
     public ResponseEntity<PersonCreateUpdateResponse> createPerson(@Valid @RequestBody PersonCreateRequest personCreateRequest) {
         Person newPerson = personService.createPerson(dtoConverter.fromPersonCreateRequest(personCreateRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoConverter.toPersonCreateUpdateResponse(newPerson));
     }
 
-    // return 200 or 201?
-    @PutMapping
-    public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonUpdateRequest personUpdateRequest) {
-        Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateRequest(personUpdateRequest));
-        return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonCreateUpdateResponse(updatedPerson));
-    }
-
-    // return 404 if not found
+    // TODO add test
     @GetMapping("/{id}")
     public ResponseEntity<PersonGetResponse> getPerson(@Valid @NotNull @PathVariable("id") Long personId) {
         Person person = personService.getPerson(personId);
         return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonGetResponse(person));
     }
 
+    // return 200 or 201?
+    // TODO add test
+    @PutMapping
+    public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonUpdateRequest personUpdateRequest) {
+        Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateRequest(personUpdateRequest));
+        return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonCreateUpdateResponse(updatedPerson));
+    }
+
+    // TODO add test
     @GetMapping
     public ResponseEntity<List<PersonGetBulkResponse>> getPeople(@Valid
                                                                  @NotNull
@@ -82,6 +85,7 @@ public class PersonController {
         return ResponseEntity.status(HttpStatus.OK).body(body);
     }
 
+    // TODO add test
     @GetMapping("/verify")
     public boolean verifyPerson(@Valid @NotNull @RequestParam("name") String fullName,
                                 @Valid @NotNull @RequestParam("passport") String passportNumber) {

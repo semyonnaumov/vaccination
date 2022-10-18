@@ -1,7 +1,11 @@
 package com.naumov.service;
 
+import com.naumov.EntityTestUtil;
 import com.naumov.exception.PersonCreationException;
-import com.naumov.model.*;
+import com.naumov.model.Address;
+import com.naumov.model.IdentityDocument;
+import com.naumov.model.Person;
+import com.naumov.model.Region;
 import com.naumov.repository.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,16 +14,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
+import static com.naumov.EntityTestUtil.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
-class PersonServiceTest {
+class PersonServiceCreateTest {
     @Autowired
     PersonService personService;
     @Autowired
@@ -38,7 +40,7 @@ class PersonServiceTest {
     @Test
     @Transactional
     void createPersonWithAllNewRelations() {
-        Person person = Person.builder()
+        Person newPerson = Person.builder()
                 .name("Person")
                 .dateOfBirth(LocalDate.EPOCH)
                 .isHidden(true)
@@ -46,26 +48,26 @@ class PersonServiceTest {
 
         Region region0 = regionRepository.findAll().get(0);
         Region region1 = regionRepository.findAll().get(1);
-        addAddressRecord(person, region0, "Address line 0", true);
-        addAddressRecord(person, region1, "Address line 1", false);
+        addAddressRecord(newPerson, region0, "Address line 0", true);
+        addAddressRecord(newPerson, region1, "Address line 1", false);
 
-        addContact(person, "+71234567890");
-        addContact(person, "+71234567891");
+        addContact(newPerson, "+71234567890");
+        addContact(newPerson, "+71234567891");
 
-        addIdentityDocument(person, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", true);
-        addIdentityDocument(person, IdentityDocument.DocumentType.INTERNATIONAL_PASSPORT, "0123401234", "2001-01-01", false);
-        addIdentityDocument(person, IdentityDocument.DocumentType.PENSION_ID, "2626262626262626", "2021-12-21", false);
+        addIdentityDocument(newPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", true);
+        addIdentityDocument(newPerson, IdentityDocument.DocumentType.INTERNATIONAL_PASSPORT, "0123401234", "2001-01-01", false);
+        addIdentityDocument(newPerson, IdentityDocument.DocumentType.PENSION_ID, "2626262626262626", "2021-12-21", false);
 
-        Person savedPerson = personService.createPerson(person);
+        Person savedPerson = personService.createPerson(newPerson);
         personRepository.flush();
 
         // assertions
-        assertThat(savedPerson.getName()).isEqualTo(person.getName());
-        assertThat(savedPerson.getDateOfBirth()).isEqualTo(person.getDateOfBirth());
-        assertThat(savedPerson.getIsHidden()).isEqualTo(person.getIsHidden());
-        assertThat(savedPerson.getAddressRecords().size()).isEqualTo(person.getAddressRecords().size());
-        assertThat(savedPerson.getContacts().size()).isEqualTo(person.getContacts().size());
-        assertThat(savedPerson.getIdentityDocuments().size()).isEqualTo(person.getIdentityDocuments().size());
+        assertThat(savedPerson.getName()).isEqualTo(newPerson.getName());
+        assertThat(savedPerson.getDateOfBirth()).isEqualTo(newPerson.getDateOfBirth());
+        assertThat(savedPerson.getIsHidden()).isEqualTo(newPerson.getIsHidden());
+        assertThat(savedPerson.getAddressRecords().size()).isEqualTo(newPerson.getAddressRecords().size());
+        assertThat(savedPerson.getContacts().size()).isEqualTo(newPerson.getContacts().size());
+        assertThat(savedPerson.getIdentityDocuments().size()).isEqualTo(newPerson.getIdentityDocuments().size());
 
         assertThat(personRepository.count()).isEqualTo(1);
         assertThat(addressRepository.count()).isEqualTo(2);
@@ -213,88 +215,6 @@ class PersonServiceTest {
     }
 
     private Person prepareSimplePerson() {
-        Person person = Person.builder()
-                .name("Name")
-                .dateOfBirth(LocalDate.EPOCH)
-                .isHidden(true)
-                .build();
-
-        prepareSimpleContact(person);
-        prepareSimpleIdentityDocument(person);
-
-        Region region0 = regionRepository.findAll().get(0);
-        addAddressRecord(person, region0, "Address", true);
-        return person;
-    }
-
-    private void prepareSimpleIdentityDocument(Person person) {
-        addIdentityDocument(
-                person,
-                IdentityDocument.DocumentType.INNER_PASSPORT,
-                "12345",
-                "1999-12-12",
-                true
-        );
-    }
-
-    private void prepareSimpleContact(Person person) {
-        addContact(person, "+71234567890");
-    }
-
-    private void addContact(Person person, String phoneNumber) {
-        Contact contact = Contact.builder()
-                .phoneNumber(phoneNumber)
-                .owner(person)
-                .build();
-
-        List<Contact> contacts = person.getContacts() != null
-                ? person.getContacts()
-                : new ArrayList<>();
-
-        contacts.add(contact);
-        person.setContacts(contacts);
-    }
-
-    private void addAddressRecord(Person person, Region region, String addressString, Boolean isRegistration) {
-        Address address = Address.builder()
-                .region(region)
-                .address(addressString)
-                .build();
-
-        PersonAddress personAddress = PersonAddress.builder()
-                .person(person)
-                .address(address)
-                .isRegistration(isRegistration)
-                .build();
-
-        address.setPersonRecords(List.of(personAddress));
-
-        List<PersonAddress> personAddresses = person.getAddressRecords() != null
-                ? person.getAddressRecords()
-                : new ArrayList<>();
-
-        personAddresses.add(personAddress);
-        person.setAddressRecords(personAddresses);
-    }
-
-    private void addIdentityDocument(Person person,
-                                     IdentityDocument.DocumentType type,
-                                     String fullNumber,
-                                     String issueDate,
-                                     boolean isPrimary) {
-        IdentityDocument identityDocument = IdentityDocument.builder()
-                .type(type)
-                .fullNumber(fullNumber)
-                .issueDate(LocalDate.parse(issueDate, DateTimeFormatter.ISO_LOCAL_DATE))
-                .owner(person)
-                .isPrimary(isPrimary)
-                .build();
-
-        List<IdentityDocument> identityDocuments = person.getIdentityDocuments() != null
-                ? person.getIdentityDocuments()
-                : new ArrayList<>();
-
-        identityDocuments.add(identityDocument);
-        person.setIdentityDocuments(identityDocuments);
+        return EntityTestUtil.prepareSimplePerson(regionRepository.findAll().get(0));
     }
 }

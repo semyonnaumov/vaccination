@@ -164,12 +164,20 @@ public class PersonServiceImpl implements PersonService {
         transientPerson.setAddressRecords(updatedPersonAddresses);
     }
 
-    // TODO add tests
+    /*
+     * Method getPerson fetches the person with all associations in three steps
+     * in order to avoid MultipleBagFetchException. All entity fields merges
+     * happen under the hood in the persistence context.
+     */
     @Override
     @Transactional(readOnly = true)
-    public Person getPerson(long personId) {
-        return personRepository.findById(personId)
-                .orElseThrow(() -> new EntityNotFoundException("Person with id=" + personId + " does not exist"));
+    public Person getPerson(final long personId) {
+        Optional<Person> foundPerson = personRepository.findById(personId)
+                .flatMap(op -> personRepository.findByIdFetchContacts(personId))
+                .flatMap(op -> personRepository.findByIdFetchIdentityDocuments(personId));
+
+        return foundPerson.orElseThrow(() ->
+                new EntityNotFoundException("Person with id=" + personId + " does not exist"));
     }
 
     // TODO add tests
@@ -188,14 +196,6 @@ public class PersonServiceImpl implements PersonService {
     @Transactional(readOnly = true)
     public List<Person> getPeople(int pageNumber, int pageSize) {
         return personRepository.findAll(Pageable.ofSize(pageSize).withPage(pageNumber)).getContent();
-    }
-
-    // TODO add tests
-    @Override
-    @Transactional(readOnly = true)
-    public boolean verifyPassport(String fullName, String passportNumber) {
-        // TODO implement
-        throw new UnsupportedOperationException("Not implemented");
     }
 
     // TODO add tests
@@ -275,4 +275,13 @@ public class PersonServiceImpl implements PersonService {
 //
 //        return idRepo.findByTypeAndFullNumber(rawId.getType(), rawId.getFullNumber());
 //    }
+
+
+    // TODO add tests
+    @Override
+    @Transactional(readOnly = true)
+    public boolean verifyPassport(String fullName, String passportNumber) {
+        // TODO implement
+        throw new UnsupportedOperationException("Not implemented");
+    }
 }
