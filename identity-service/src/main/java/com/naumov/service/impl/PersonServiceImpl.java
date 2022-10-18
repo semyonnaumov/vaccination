@@ -168,7 +168,6 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional(readOnly = true)
     public Person getPerson(long personId) {
-        // TODO use multiple methods to fetch lazy associations here
         return personRepository.findById(personId)
                 .orElseThrow(() -> new EntityNotFoundException("Person with id=" + personId + " does not exist"));
     }
@@ -180,6 +179,7 @@ public class PersonServiceImpl implements PersonService {
         List<Long> pagePeopleIds = personRepository.findAllIdsByRegistrationRegion(regionName,
                 Pageable.ofSize(pageSize).withPage(pageNumber));
 
+        // TODO use multiple methods to fetch lazy associations here
         return personRepository.findAllByIds(pagePeopleIds);
     }
 

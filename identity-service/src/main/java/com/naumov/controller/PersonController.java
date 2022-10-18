@@ -3,13 +3,19 @@ package com.naumov.controller;
 import com.naumov.dto.DtoConverter;
 import com.naumov.dto.rq.PersonCreateRequest;
 import com.naumov.dto.rq.PersonUpdateRequest;
+import com.naumov.dto.rs.DefaultErrorResponse;
 import com.naumov.dto.rs.PersonCreateUpdateResponse;
 import com.naumov.dto.rs.PersonGetBulkResponse;
 import com.naumov.dto.rs.PersonGetResponse;
+import com.naumov.exception.EntityNotFoundException;
 import com.naumov.model.Person;
 import com.naumov.service.PersonService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +30,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/people")
 public class PersonController {
+    private static final Logger LOGGER = LogManager.getLogger(PersonController.class);
+
     private final PersonService personService;
     private final DtoConverter dtoConverter;
 
@@ -78,5 +86,17 @@ public class PersonController {
     public boolean verifyPerson(@Valid @NotNull @RequestParam("name") String fullName,
                                 @Valid @NotNull @RequestParam("passport") String passportNumber) {
         return personService.verifyPassport(fullName, passportNumber);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<DefaultErrorResponse> handleNotFoundExceptions(Exception e) {
+        LOGGER.error("Not found exception handling, returning {}", HttpStatus.NOT_FOUND, e);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .headers(httpHeaders)
+                .body(new DefaultErrorResponse(e.getMessage()));
     }
 }

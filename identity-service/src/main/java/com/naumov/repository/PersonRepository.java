@@ -16,18 +16,14 @@ import java.util.Optional;
 public interface PersonRepository extends JpaRepository<Person, Long> {
 
     // Two queries to sequentially load a Person object avoiding MultipleBagFetchException
-    @Query("""
-            FROM Person p
-            LEFT OUTER JOIN FETCH p.contacts
-            WHERE p.id = :id
-            """)
+    @Query("FROM Person p " +
+            "LEFT OUTER JOIN FETCH p.contacts " +
+            "WHERE p.id = :id")
     Optional<Person> findByIdFetchContacts(Long id);
 
-    @Query("""
-            FROM Person p
-            LEFT OUTER JOIN FETCH p.identityDocuments
-            WHERE p.id = :id
-            """)
+    @Query("FROM Person p " +
+            "LEFT OUTER JOIN FETCH p.identityDocuments " +
+            "WHERE p.id = :id")
     Optional<Person> findByIdFetchIdentityDocuments(Long id);
 
     // HHH000104 solution - 2 methods: findAllIdsByRegistrationRegion and findAllByIds
