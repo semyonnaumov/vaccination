@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+// TODO test generated SQL
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface PersonRepository extends JpaRepository<Person, Long> {
@@ -26,7 +27,8 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "WHERE p.id = :id")
     Optional<Person> findByIdFetchIdentityDocuments(Long id);
 
-    // HHH000104 solution - 2 methods: findAllIdsByRegistrationRegion and findAllByIds
+    // Pagination in memory (HHH000104) and cross join (MultipleBagFetchException) solution -
+    // two stage select: findAllIdsByRegistrationRegion (findAllIds) and findAllByIdsFetch* methods
     @Query("SELECT p.id FROM Person p " +
             "JOIN p.addressRecords ar " +
             "JOIN ar.address a " +
@@ -35,14 +37,28 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "ORDER BY p.id")
     List<Long> findAllIdsByRegistrationRegion(String regionName, Pageable pageable);
 
-    // TODO will be subjected to MultipleBagFetchException, redo
+    @Query("SELECT p.id FROM Person p " +
+            "ORDER BY p.id")
+    List<Long> findAllIds(Pageable withPage);
+
     @Query("FROM Person p " +
-            "JOIN FETCH PersonAddress pa " +
-            "JOIN FETCH Address a " +
-            "JOIN FETCH Region r " +
-            "JOIN FETCH Contact c " +
-            "JOIN FETCH IdentityDocument id " +
+            "LEFT JOIN FETCH p.addressRecords ar " +
+            "JOIN FETCH ar.address a " +
+            "JOIN FETCH a.region " +
             "WHERE p.id IN :ids " +
             "ORDER BY p.id")
-    List<Person> findAllByIds(List<Long> ids);
+    List<Person> findAllByIdsFetchAddressRecords(List<Long> ids);
+
+    @Query("FROM Person p " +
+            "LEFT JOIN FETCH p.contacts " +
+            "WHERE p.id IN :ids " +
+            "ORDER BY p.id")
+    List<Person> findAllByIdsFetchContacts(List<Long> ids);
+
+    @Query("FROM Person p " +
+            "LEFT JOIN FETCH p.identityDocuments " +
+            "WHERE p.id IN :ids " +
+            "ORDER BY p.id")
+    List<Person> findAllByIdsFetchIdentityDocuments(List<Long> ids);
+
 }

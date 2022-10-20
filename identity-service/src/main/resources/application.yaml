@@ -19,9 +19,9 @@ spring:
       hibernate:
         format_sql: true # indents SQL
         jdbc.batch_size: 10 # production settings
+        order_updates: true # production settings
+        order_inserts: true # production settings
 #        generate_statistics: true # Session-scope stats
-#        order_updates: true # production settings
-#        order_inserts: true # production settings
   liquibase:
     enabled: false # enable to test with migrations
     change-log: classpath:db/changelog/db.changelog-master.yaml

@@ -125,8 +125,10 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createPersonWithoutName() {
-        Person newPerson = prepareSimplePerson();
-        newPerson.setName(null);
+        Person newPerson = simplePersonBuilder()
+                .name(null)
+                .build();
+
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
             personRepository.flush();
@@ -136,8 +138,10 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createPersonWithoutDateOfBirth() {
-        Person newPerson = prepareSimplePerson();
-        newPerson.setDateOfBirth(null);
+        Person newPerson = simplePersonBuilder()
+                .dateOfBirth(null)
+                .build();
+
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
             personRepository.flush();
@@ -147,8 +151,10 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createPersonWithoutIsHidden() {
-        Person newPerson = prepareSimplePerson();
-        newPerson.setIsHidden(null);
+        Person newPerson = simplePersonBuilder()
+                .isHidden(null)
+                .build();
+
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
             personRepository.flush();
@@ -158,7 +164,7 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createPersonWithoutAddresses() {
-        Person newPerson = prepareSimplePerson();
+        Person newPerson = simplePersonBuilder().build();
         newPerson.setAddressRecords(null);
         Person createdPerson = personService.createPerson(newPerson);
         personRepository.flush();
@@ -168,7 +174,7 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createPersonWithoutContacts() {
-        Person newPerson = prepareSimplePerson();
+        Person newPerson = simplePersonBuilder().build();
         newPerson.setContacts(null);
         Person createdPerson = personService.createPerson(newPerson);
         personRepository.flush();
@@ -178,7 +184,7 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createPersonWithoutIdentityDocuments() {
-        Person newPerson = prepareSimplePerson();
+        Person newPerson = simplePersonBuilder().build();
         newPerson.setIdentityDocuments(null);
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
@@ -189,11 +195,12 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createTwoPeopleWithTheSameDocument() {
-        Person p1 = prepareSimplePerson();
-        p1.getContacts().get(0).setPhoneNumber("+70987654321");
+        Person p1 = simplePersonBuilder()
+                .phoneNumber("+70987654321")
+                .build();
         personService.createPerson(p1);
 
-        Person p2 = prepareSimplePerson();
+        Person p2 = simplePersonBuilder().build();
         assertThatThrownBy(() -> {
             personService.createPerson(p2);
             personRepository.flush();
@@ -203,18 +210,19 @@ class PersonServiceCreateTest {
     @Test
     @Transactional
     void createTwoPeopleWithTheSameContact() {
-        Person p1 = prepareSimplePerson();
-        p1.getIdentityDocuments().get(0).setType(IdentityDocument.DocumentType.PENSION_ID);
+        Person p1 = simplePersonBuilder()
+                .documentType(IdentityDocument.DocumentType.PENSION_ID)
+                .build();
         personService.createPerson(p1);
 
-        Person p2 = prepareSimplePerson();
+        Person p2 = simplePersonBuilder().build();
         assertThatThrownBy(() -> {
             personService.createPerson(p2);
             personRepository.flush();
         }).isInstanceOf(PersonCreationException.class);
     }
 
-    private Person prepareSimplePerson() {
-        return EntityTestUtil.prepareSimplePerson(regionRepository.findAll().get(0));
+    private SimplePersonBuilder simplePersonBuilder() {
+        return EntityTestUtil.simplePersonBuilder(regionRepository.findAll().get(0));
     }
 }

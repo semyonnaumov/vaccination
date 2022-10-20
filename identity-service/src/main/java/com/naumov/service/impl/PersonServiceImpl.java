@@ -180,22 +180,38 @@ public class PersonServiceImpl implements PersonService {
                 new EntityNotFoundException("Person with id=" + personId + " does not exist"));
     }
 
-    // TODO add tests
+    /*
+     * Methods getPeople(String, int, int) and getPeople(int, int) fetch the people with
+     * all associations in four steps in order to avoid pagination in memory and cross joins.
+     * All entities fields merges happen under the hood in the persistence context.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<Person> getPeople(String regionName, int pageNumber, int pageSize) {
         List<Long> pagePeopleIds = personRepository.findAllIdsByRegistrationRegion(regionName,
                 Pageable.ofSize(pageSize).withPage(pageNumber));
 
-        // TODO use multiple methods to fetch lazy associations here
-        return personRepository.findAllByIds(pagePeopleIds);
+        return fetchPeopleByIds(pagePeopleIds);
     }
 
-    // TODO add tests
     @Override
     @Transactional(readOnly = true)
     public List<Person> getPeople(int pageNumber, int pageSize) {
-        return personRepository.findAll(Pageable.ofSize(pageSize).withPage(pageNumber)).getContent();
+        List<Long> pagePeopleIds = personRepository.findAllIds(
+                Pageable.ofSize(pageSize).withPage(pageNumber));
+
+        return fetchPeopleByIds(pagePeopleIds);
+    }
+
+    private List<Person> fetchPeopleByIds(List<Long> peopleIds) {
+        if (peopleIds.isEmpty()) return Collections.emptyList();
+
+        // all associations are merged in persistence context with three queries
+        List<Person> peoplePage = personRepository.findAllByIdsFetchAddressRecords(peopleIds);
+        personRepository.findAllByIdsFetchContacts(peopleIds);
+        personRepository.findAllByIdsFetchIdentityDocuments(peopleIds);
+
+        return peoplePage;
     }
 
     // TODO add tests

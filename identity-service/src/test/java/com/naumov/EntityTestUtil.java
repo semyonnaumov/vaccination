@@ -8,29 +8,111 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Component
 public final class EntityTestUtil {
-    public static Person prepareSimplePerson(Region managedRegion) {
-        Person person = Person.builder()
-                .name("Name")
-                .dateOfBirth(LocalDate.EPOCH)
-                .isHidden(true)
-                .build();
 
-        addContact(person, "+71234567890");
-        addIdentityDocument(
-                person,
-                IdentityDocument.DocumentType.INNER_PASSPORT,
-                "12345",
-                "1999-12-12",
-                true
-        );
+    public static SimplePersonBuilder simplePersonBuilder(Region addressRegion) {
+        Objects.requireNonNull(addressRegion, "Address region must not be null");
+        return new SimplePersonBuilder(addressRegion);
+    }
 
-        addAddressRecord(person, managedRegion, "Address", true);
-        return person;
+    public static final class SimplePersonBuilder {
+        private final Region addressRegion;
+        private String name = "Name";
+        private LocalDate dateOfBirth = LocalDate.EPOCH;
+        private Boolean isHidden = true;
+        private String phoneNumber = "+71234567890";
+        private IdentityDocument.DocumentType documentType = IdentityDocument.DocumentType.INNER_PASSPORT;
+        private String documentFullNumber = "12345";
+        private String documentIssueDate = "1999-12-12";
+        private Boolean documentIsPrimary = true;
+        private String addressString = "Address";
+        private Boolean addressIsRegistration = true;
+
+        public SimplePersonBuilder(Region addressRegion) {
+            this.addressRegion = addressRegion;
+        }
+
+        public SimplePersonBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public SimplePersonBuilder dateOfBirth(LocalDate dateOfBirth) {
+            this.dateOfBirth = dateOfBirth;
+            return this;
+        }
+
+        public SimplePersonBuilder isHidden(Boolean isHidden) {
+            this.isHidden = isHidden;
+            return this;
+        }
+
+        public SimplePersonBuilder phoneNumber(String phoneNumber) {
+            this.phoneNumber = phoneNumber;
+            return this;
+        }
+
+        public SimplePersonBuilder documentType(IdentityDocument.DocumentType documentType) {
+            this.documentType = documentType;
+            return this;
+        }
+
+        public SimplePersonBuilder documentFullNumber(String documentFullNumber) {
+            this.documentFullNumber = documentFullNumber;
+            return this;
+        }
+
+        public SimplePersonBuilder documentIssueDate(String documentIssueDate) {
+            this.documentIssueDate = documentIssueDate;
+            return this;
+        }
+
+        public SimplePersonBuilder documentIsPrimary(Boolean documentIsPrimary) {
+            this.documentIsPrimary = documentIsPrimary;
+            return this;
+        }
+
+        public SimplePersonBuilder addressString(String addressString) {
+            this.addressString = addressString;
+            return this;
+        }
+
+        public SimplePersonBuilder addressIsRegistration(Boolean addressIsRegistration) {
+            this.addressIsRegistration = addressIsRegistration;
+            return this;
+        }
+
+        public Person build() {
+            Person person = Person.builder()
+                    .name(name)
+                    .dateOfBirth(dateOfBirth)
+                    .isHidden(isHidden)
+                    .build();
+
+            addContact(person, phoneNumber);
+            addIdentityDocument(
+                    person,
+                    documentType,
+                    documentFullNumber,
+                    documentIssueDate,
+                    documentIsPrimary
+            );
+
+            Objects.requireNonNull(addressRegion, "Address region is null");
+            addAddressRecord(
+                    person,
+                    addressRegion,
+                    addressString,
+                    addressIsRegistration
+            );
+
+            return person;
+        }
     }
 
     public static void addContact(Person person, String phoneNumber) {

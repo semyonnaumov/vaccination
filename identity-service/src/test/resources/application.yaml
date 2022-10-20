@@ -9,8 +9,6 @@ spring:
       hibernate:
 #        format_sql: true # indents SQL
 #        generate_statistics: true # Session-scope stats
-#        order_updates: true # production settings
-#        order_inserts: true # production settings
   liquibase:
     enabled: true
 logging:
