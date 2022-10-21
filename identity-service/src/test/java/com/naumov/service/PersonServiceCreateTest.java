@@ -1,7 +1,8 @@
 package com.naumov.service;
 
 import com.naumov.EntityTestUtil;
-import com.naumov.exception.PersonCreationException;
+import com.naumov.exception.ResourceConflictException;
+import com.naumov.exception.ResourceCreationException;
 import com.naumov.model.Address;
 import com.naumov.model.IdentityDocument;
 import com.naumov.model.Person;
@@ -189,7 +190,7 @@ class PersonServiceCreateTest {
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
             personRepository.flush();
-        }).isInstanceOf(PersonCreationException.class);
+        }).isInstanceOf(ResourceConflictException.class);
     }
 
     @Test
@@ -204,7 +205,7 @@ class PersonServiceCreateTest {
         assertThatThrownBy(() -> {
             personService.createPerson(p2);
             personRepository.flush();
-        }).isInstanceOf(PersonCreationException.class);
+        }).isInstanceOf(ResourceCreationException.class);
     }
 
     @Test
@@ -219,7 +220,7 @@ class PersonServiceCreateTest {
         assertThatThrownBy(() -> {
             personService.createPerson(p2);
             personRepository.flush();
-        }).isInstanceOf(PersonCreationException.class);
+        }).isInstanceOf(ResourceCreationException.class);
     }
 
     private SimplePersonBuilder simplePersonBuilder() {

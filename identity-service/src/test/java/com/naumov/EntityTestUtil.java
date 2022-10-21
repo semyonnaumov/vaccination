@@ -22,6 +22,11 @@ public final class EntityTestUtil {
 
     public static final class SimplePersonBuilder {
         private final Region addressRegion;
+        private Long id = null;
+        private Long contactId = null;
+        private Long identityDocumentId = null;
+        private Long addressRecordId = null;
+        private Long addressId = null;
         private String name = "Name";
         private LocalDate dateOfBirth = LocalDate.EPOCH;
         private Boolean isHidden = true;
@@ -35,6 +40,31 @@ public final class EntityTestUtil {
 
         public SimplePersonBuilder(Region addressRegion) {
             this.addressRegion = addressRegion;
+        }
+
+        public SimplePersonBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public SimplePersonBuilder contactId(Long contactId) {
+            this.contactId = contactId;
+            return this;
+        }
+
+        public SimplePersonBuilder identityDocumentId(Long identityDocumentId) {
+            this.identityDocumentId = identityDocumentId;
+            return this;
+        }
+
+        public SimplePersonBuilder addressRecordId(Long addressRecordId) {
+            this.addressRecordId = addressRecordId;
+            return this;
+        }
+
+        public SimplePersonBuilder addressId(Long addressId) {
+            this.addressId = addressId;
+            return this;
         }
 
         public SimplePersonBuilder name(String name) {
@@ -89,13 +119,15 @@ public final class EntityTestUtil {
 
         public Person build() {
             Person person = Person.builder()
+                    .id(id)
                     .name(name)
                     .dateOfBirth(dateOfBirth)
                     .isHidden(isHidden)
                     .build();
 
-            addContact(person, phoneNumber);
+            addContact(contactId, person, phoneNumber);
             addIdentityDocument(
+                    identityDocumentId,
                     person,
                     documentType,
                     documentFullNumber,
@@ -105,6 +137,8 @@ public final class EntityTestUtil {
 
             Objects.requireNonNull(addressRegion, "Address region is null");
             addAddressRecord(
+                    addressId,
+                    addressRecordId,
                     person,
                     addressRegion,
                     addressString,
@@ -115,8 +149,9 @@ public final class EntityTestUtil {
         }
     }
 
-    public static void addContact(Person person, String phoneNumber) {
+    public static void addContact(Long contactId, Person person, String phoneNumber) {
         Contact contact = Contact.builder()
+                .id(contactId)
                 .phoneNumber(phoneNumber)
                 .owner(person)
                 .build();
@@ -129,13 +164,24 @@ public final class EntityTestUtil {
         person.setContacts(contacts);
     }
 
-    public static void addAddressRecord(Person person, Region region, String addressString, Boolean isRegistration) {
+    public static void addContact(Person person, String phoneNumber) {
+        addContact(null, person, phoneNumber);
+    }
+
+    public static void addAddressRecord(Long addressId,
+                                        Long addressRecordId,
+                                        Person person,
+                                        Region region,
+                                        String addressString,
+                                        Boolean isRegistration) {
         Address address = Address.builder()
+                .id(addressId)
                 .region(region)
                 .address(addressString)
                 .build();
 
         PersonAddress personAddress = PersonAddress.builder()
+                .id(addressRecordId)
                 .person(person)
                 .address(address)
                 .isRegistration(isRegistration)
@@ -151,12 +197,18 @@ public final class EntityTestUtil {
         person.setAddressRecords(personAddresses);
     }
 
-    public static void addIdentityDocument(Person person,
+    public static void addAddressRecord(Person person, Region region, String addressString, Boolean isRegistration) {
+        addAddressRecord(null, null, person, region, addressString, isRegistration);
+    }
+
+    public static void addIdentityDocument(Long identityDocumentId,
+                                           Person person,
                                            IdentityDocument.DocumentType type,
                                            String fullNumber,
                                            String issueDate,
                                            boolean isPrimary) {
         IdentityDocument identityDocument = IdentityDocument.builder()
+                .id(identityDocumentId)
                 .type(type)
                 .fullNumber(fullNumber)
                 .issueDate(LocalDate.parse(issueDate, DateTimeFormatter.ISO_LOCAL_DATE))
@@ -170,6 +222,14 @@ public final class EntityTestUtil {
 
         identityDocuments.add(identityDocument);
         person.setIdentityDocuments(identityDocuments);
+    }
+
+    public static void addIdentityDocument(Person person,
+                                           IdentityDocument.DocumentType type,
+                                           String fullNumber,
+                                           String issueDate,
+                                           boolean isPrimary) {
+        addIdentityDocument(null, person, type, fullNumber, issueDate, isPrimary);
     }
 
     public static void assertThatCollectionsAreNullOrEqualSize(Collection<?> actual, Collection<?> expected) {

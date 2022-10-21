@@ -7,7 +7,7 @@ import com.naumov.dto.rs.DefaultErrorResponse;
 import com.naumov.dto.rs.PersonCreateUpdateResponse;
 import com.naumov.dto.rs.PersonGetBulkResponse;
 import com.naumov.dto.rs.PersonGetResponse;
-import com.naumov.exception.EntityNotFoundException;
+import com.naumov.exception.ResourceNotFoundException;
 import com.naumov.model.Person;
 import com.naumov.service.PersonService;
 import org.apache.logging.log4j.LogManager;
@@ -92,7 +92,7 @@ public class PersonController {
         return personService.verifyPassport(fullName, passportNumber);
     }
 
-    @ExceptionHandler(EntityNotFoundException.class)
+    @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<DefaultErrorResponse> handleNotFoundExceptions(Exception e) {
         LOGGER.error("Not found exception handling, returning {}", HttpStatus.NOT_FOUND, e);
 

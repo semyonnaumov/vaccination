@@ -11,5 +11,5 @@ import java.util.Optional;
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface IdentityDocumentRepository extends JpaRepository<IdentityDocument, Long> {
-    Optional<IdentityDocument> findByTypeAndFullNumber(IdentityDocument.DocumentType type, String fullNumber);
+    boolean existsByTypeAndFullNumber(IdentityDocument.DocumentType type, String fullNumber);
 }

@@ -1,12 +1,13 @@
 package com.naumov.service;
 
-import com.naumov.exception.EntityNotFoundException;
+import com.naumov.exception.ResourceNotFoundException;
 import com.naumov.model.Person;
 import com.naumov.model.Region;
 import com.naumov.repository.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
+@Transactional
 class PersonServiceGetTest {
     @Autowired
     PersonService personService;
@@ -53,7 +55,7 @@ class PersonServiceGetTest {
         assertThatThrownBy(() -> {
             personService.getPerson(-1L);
             personRepository.flush();
-        }).isInstanceOf(EntityNotFoundException.class);
+        }).isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test

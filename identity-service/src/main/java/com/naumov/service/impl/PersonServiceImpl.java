@@ -1,7 +1,9 @@
 package com.naumov.service.impl;
 
-import com.naumov.exception.EntityNotFoundException;
-import com.naumov.exception.PersonCreationException;
+import com.naumov.exception.ResourceConflictException;
+import com.naumov.exception.ResourceCreationException;
+import com.naumov.exception.ResourceNotFoundException;
+import com.naumov.exception.ResourceUpdateException;
 import com.naumov.model.*;
 import com.naumov.repository.AddressRepository;
 import com.naumov.repository.ContactRepository;
@@ -56,25 +58,67 @@ public class PersonServiceImpl implements PersonService {
      * */
     @Override
     @Transactional
-    public Person createPerson(Person transientPerson) {
-        if (transientPerson == null) throw new PersonCreationException("Person cannot be null");
+    public Person createPerson(Person newPerson) {
+        if (newPerson == null) throw new ResourceCreationException("Created person cannot be null");
 
-        List<Pair<Address, Boolean>> transientAddressPairs = extractAddresses(transientPerson);
-        validateUniqueRegistrationAddress(transientPerson.getAddressRecords());
-        validateIdentityDocuments(transientPerson.getIdentityDocuments());
-        validateContacts(transientPerson.getContacts());
-        List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(transientAddressPairs);
-        updatePersonAddresses(transientPerson, savedAddresses);
+        validateIdentityDocumentsForCreation(newPerson.getIdentityDocuments());
+        validateContactsForCreation(newPerson.getContacts());
+
+        List<PersonAddress> newAddressRecords = newPerson.getAddressRecords();
+        validateUniqueRegistrationAddress(newAddressRecords);
+        List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(newAddressRecords, false);
+        updateAddressesRecords(newPerson, savedAddresses);
 
         // All associations except Address entities are saved here using cascade.
-        return personRepository.save(transientPerson);
+        return personRepository.save(newPerson);
     }
 
-    private List<Pair<Address, Boolean>> extractAddresses(Person person) {
-        return Optional.ofNullable(person.getAddressRecords())
-                .orElse(new ArrayList<>()).stream()
-                .map(e -> Pair.of(e.getAddress(), e.getIsRegistration()))
-                .collect(Collectors.toList());
+    // TODO add tests
+    /*
+     * Person update scenario:
+     * We cannot save everything cascadely since some addresses may already exist, and the request will end
+     * up with unique constraint violation exception. Hence, we need to process addresses separately.
+     *
+     * 1. Find and load the person by ID, if not exists - respond with 404.
+     * 2. Extract all addresses from updatedPerson addressRecords
+     *    -> list of transient Address entities
+     * 3. Validate the updatedPerson has exactly one registration address
+     * 4. Find ids of Addresses that need to be deleted, remember them. Deletion cannot be done right away
+     *    since we still have references to them via FK from PeopleAddresses table.
+     * 5. Load all existing Address entities from updatedPerson, save all new address entities.
+     *    -> list of saved Address entities
+     * 6. Re-create a list of PersonAddress entities from saved Address records, add them to Person ->
+     *    -> updatedPerson is ready to be saved
+     * 6. Save the updatedPerson Person entity. PersonAddress,Contact and IdentityDocument
+     *    entities will be saved cascadely. Unique constraint violation exceptions (phone # and ID) may occur -
+     *    the transaction will be rolled back.
+     * 7. Since PersonAddress records with the addresses that had to be deleted has been deleted -
+     *    delete all Address records the were to be deleted.
+     * */
+    @Override
+    @Transactional
+    public Person updatePerson(Person updatedPerson) {
+        if (updatedPerson == null) throw new ResourceUpdateException("Updated person cannot be null");
+        Long personId = updatedPerson.getId();
+        if (personId == null) throw new ResourceUpdateException("Updated person must have an id");
+
+        // loads the old addresses eagerly as well
+        Person persistedPerson = personRepository.findById(personId).orElseThrow(() ->
+                new ResourceNotFoundException("Person with id=" + personId + " does not exist"));
+
+        validateIdentityDocumentsForUpdate(updatedPerson.getIdentityDocuments());
+        validateContactsForUpdate(updatedPerson.getContacts());
+
+        List<PersonAddress> newAddressRecords = updatedPerson.getAddressRecords();
+        validateUniqueRegistrationAddress(newAddressRecords);
+        List<Pair<Address, Boolean>> updatedAddresses = saveOrLoadAddresses(newAddressRecords, true);
+        updateAddressesRecords(updatedPerson, updatedAddresses);
+
+        // All associations except Address entities are saved here using cascade.
+        Person person = personRepository.save(updatedPerson);
+
+        deleteAddressesIfUnused(persistedPerson.getAddressRecords());
+        return person;
     }
 
     private void validateUniqueRegistrationAddress(List<PersonAddress> personAddresses) {
@@ -83,17 +127,34 @@ public class PersonServiceImpl implements PersonService {
                 .count();
 
         if (count > 1) {
-            throw new PersonCreationException("Person cannot have multiple registration addresses");
+            throw new ResourceConflictException("Person cannot have multiple registration addresses");
         }
     }
 
-    private void validateIdentityDocuments(List<IdentityDocument> identityDocuments) {
+    private void validateIdentityDocumentsForCreation(List<IdentityDocument> identityDocuments) {
         validateExactlyOnePrimaryIdentityDocument(identityDocuments);
 
         for (IdentityDocument id : identityDocuments) {
-            if (identityDocumentRepository.findByTypeAndFullNumber(id.getType(), id.getFullNumber()).isPresent()) {
-                throw new PersonCreationException("Person's identity document with type " + id.getType()
-                        + " and full number " + id.getFullNumber() + " already exists");
+            if (identityDocumentRepository.existsByTypeAndFullNumber(id.getType(), id.getFullNumber())) {
+                throw new ResourceCreationException("Person's identity document with type=" + id.getType()
+                        + " and fullNumber=" + id.getFullNumber() + " was requested for creation but already exists");
+            }
+        }
+    }
+
+    private void validateIdentityDocumentsForUpdate(List<IdentityDocument> identityDocuments) {
+        validateExactlyOnePrimaryIdentityDocument(identityDocuments);
+
+        for (IdentityDocument id : identityDocuments) {
+            Long identityDocumentId = id.getId();
+            if (identityDocumentId != null) {
+                if (!identityDocumentRepository.existsById(identityDocumentId)) {
+                    throw new ResourceNotFoundException("Person's identity document with id=" + identityDocumentId
+                            + " was requested for update but does not exist");
+                }
+            } else if (identityDocumentRepository.existsByTypeAndFullNumber(id.getType(), id.getFullNumber())) {
+                throw new ResourceCreationException("Person's identity document with type=" + id.getType()
+                        + " and fullNumber=" + id.getFullNumber() + " was requested for creation but already exists");
             }
         }
     }
@@ -104,11 +165,11 @@ public class PersonServiceImpl implements PersonService {
                 .count();
 
         if (count != 1) {
-            throw new PersonCreationException("Person must have exactly one registration address");
+            throw new ResourceConflictException("Person must have exactly one registration address");
         }
     }
 
-    private void validateContacts(List<Contact> contacts) {
+    private void validateContactsForCreation(List<Contact> contacts) {
         if (contacts == null) return;
         List<String> phoneNumbers = contacts.stream()
                 .map(Contact::getPhoneNumber)
@@ -116,34 +177,74 @@ public class PersonServiceImpl implements PersonService {
 
         List<Contact> existingPhoneNumbers = contactRepository.findAllByPhoneNumberIn(phoneNumbers);
         if (!existingPhoneNumbers.isEmpty()) {
-            throw new PersonCreationException("Person's phone number " + existingPhoneNumbers.get(0).getPhoneNumber()
-                    + " already exists");
+            throw new ResourceCreationException("Person's contact with phoneNumber=" + existingPhoneNumbers.get(0).getPhoneNumber()
+                    + " was requested for creation but already exists");
         }
     }
 
-    private List<Pair<Address, Boolean>> saveOrLoadAddresses(List<Pair<Address, Boolean>> transientAddressPairs) {
+    private void validateContactsForUpdate(List<Contact> contacts) {
+        if (contacts == null) return;
+        for (Contact contact : contacts) {
+            Long contactId = contact.getId();
+            String phoneNumber = contact.getPhoneNumber();
+            if (contactId != null) {
+                if (!contactRepository.existsById(contactId)) {
+                    throw new ResourceNotFoundException("Person's contact with id=" + contactId +
+                            " was requested for update but does not exists");
+                }
+            } else if (contactRepository.existsByPhoneNumber(phoneNumber)) {
+                throw new ResourceCreationException("Person's contact with phoneNumber=" + phoneNumber
+                        + " was requested for creation but already exists");
+            }
+        }
+    }
+
+    private List<Pair<Address, Boolean>> saveOrLoadAddresses(List<PersonAddress> addressRecords, boolean allowUpdate) {
+        List<Pair<Address, Boolean>> transientAddressPairs = extractAddressesFromAddressRecords(addressRecords);
+
         List<Pair<Address, Boolean>> savedAddresses = new ArrayList<>();
         for (Pair<Address, Boolean> transientAddressPair : transientAddressPairs) {
-            Address savedAddress = saveOrLoadAddress(transientAddressPair.getFirst());
+            Address savedAddress = saveOrLoadAddress(transientAddressPair.getFirst(), allowUpdate);
             savedAddresses.add(Pair.of(savedAddress, transientAddressPair.getSecond()));
         }
 
         return savedAddresses;
     }
 
-    private Address saveOrLoadAddress(Address transientAddress) {
-        if (transientAddress == null ||
-                transientAddress.getRegion() == null ||
+    private List<Pair<Address, Boolean>> extractAddressesFromAddressRecords(List<PersonAddress> addressRecords) {
+        return Optional.ofNullable(addressRecords)
+                .orElse(new ArrayList<>()).stream()
+                .map(e -> Pair.of(e.getAddress(), e.getIsRegistration()))
+                .collect(Collectors.toList());
+    }
+
+    private Address saveOrLoadAddress(Address transientAddress, boolean allowUpdate) {
+        if (transientAddress == null) throw new ResourceConflictException("Person address must not be null");
+        if (transientAddress.getRegion() == null ||
                 transientAddress.getRegion().getName() == null ||
                 transientAddress.getAddress() == null) {
-            throw new PersonCreationException("Person address must not be null and must contain region and address line");
+            throw new ResourceConflictException("Person address must contain region and address");
         }
 
         // transientAddress may have an id
-        if (transientAddress.getId() != null) {
-            return addressRepository.findById(transientAddress.getId()).orElseThrow(() ->
-                    new PersonCreationException("A person address, provided with id=" + transientAddress.getId() +
-                            " cannot be found"));
+        Long addressId = transientAddress.getId();
+        if (addressId != null) {
+            Optional<Address> foundAddress = addressRepository.findById(addressId);
+            if (foundAddress.isEmpty()) {
+                throw new ResourceNotFoundException("Person's address with id=" + addressId
+                        + " was requested for association but does not exist");
+            } else {
+                if (allowUpdate) {
+                    return addressRepository.save(transientAddress);
+                } else {
+                    Address address = foundAddress.get();
+                    if (!address.getAddress().equals(transientAddress.getAddress()) &&
+                            !address.getRegion().getName().equals(transientAddress.getRegion().getName())) {
+                        throw new ResourceConflictException("Person's address with id=" + addressId
+                                + " was requested for association but the content varies from the content in DB");
+                    }
+                }
+            }
         }
 
         return addressRepository.findByRegionNameAndAddress(
@@ -152,7 +253,7 @@ public class PersonServiceImpl implements PersonService {
         ).orElseGet(() -> addressRepository.save(transientAddress));
     }
 
-    private void updatePersonAddresses(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
+    private void updateAddressesRecords(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
         List<PersonAddress> updatedPersonAddresses = savedAddresses.stream()
                 .map(pair -> PersonAddress.builder()
                         .person(transientPerson)
@@ -162,6 +263,15 @@ public class PersonServiceImpl implements PersonService {
                 .collect(Collectors.toList());
 
         transientPerson.setAddressRecords(updatedPersonAddresses);
+    }
+
+    private void deleteAddressesIfUnused(List<PersonAddress> addressRecords) {
+        List<Long> addressIds = Optional.ofNullable(addressRecords).orElse(new ArrayList<>()).stream()
+                .map(PersonAddress::getAddress)
+                .map(Address::getId)
+                .toList();
+
+        addressRepository.deleteAddressesByIdInAndPersonRecordsIsEmpty(addressIds);
     }
 
     /*
@@ -177,7 +287,7 @@ public class PersonServiceImpl implements PersonService {
                 .flatMap(op -> personRepository.findByIdFetchIdentityDocuments(personId));
 
         return foundPerson.orElseThrow(() ->
-                new EntityNotFoundException("Person with id=" + personId + " does not exist"));
+                new ResourceNotFoundException("Person with id=" + personId + " does not exist"));
     }
 
     /*
@@ -213,85 +323,6 @@ public class PersonServiceImpl implements PersonService {
 
         return peoplePage;
     }
-
-    // TODO add tests
-    @Override
-    @Transactional
-    public Person updatePerson(Person updatedPerson) {
-        // TODO implement
-        throw new UnsupportedOperationException("Not implemented");
-//
-//        Person persistedPerson = personRepository.findById(updatedPerson.getId()).orElseThrow(() ->
-//                new IllegalStateException("Cannot find user with id=" + updatedPerson.getId()));
-//
-//        persistedPerson.setName(updatedPerson.getName());
-//        persistedPerson.setDateOfBirth(updatedPerson.getDateOfBirth());
-//        persistedPerson.setIsHidden(updatedPerson.getIsHidden());
-//        persistedPerson.setAddressRecords(updatedPerson.getAddressRecords());
-//        persistedPerson.setContacts(updatedPerson.getContacts());
-//        persistedPerson.setIdentityDocuments(updatedPerson.getIdentityDocuments());
-//
-//        List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(persistedPerson);
-//        // todo find out what to do with these
-////        fetchOrSaveContacts(persistedPerson);
-////        fetchOrSaveIdentityDocuments(persistedPerson);
-//
-//        return personRepository.save(persistedPerson);
-    }
-
-    private List<PersonAddress> updateAddressRecords(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
-        return savedAddresses.stream()
-                .map(p -> PersonAddress.builder()
-                        .person(transientPerson)
-                        .address(p.getFirst())
-                        .isRegistration(p.getSecond())
-                        .build()
-                ).toList();
-    }
-
-//    private <E> List<E> updateRawEntities(Collection<E> rawEntities,
-//                                          JpaRepository<E, ?> repo,
-//                                          Function<E, E> findMethod) {
-//        List<E> persistedEntities = new ArrayList<>();
-//        for (E entity : rawEntities) {
-//            E persistedEntity = findMethod.apply(entity);
-//            persistedEntities.add(Objects.requireNonNullElseGet(persistedEntity,
-//                    () -> repo.save(entity)));
-//        }
-//
-//        return persistedEntities;
-//    }
-
-//    private void fetchOrSaveContacts(Person newPerson) {
-//        List<Contact> contacts = Optional.of(newPerson.getContacts()).orElse(new ArrayList<>());
-//        List<Contact> persistedContacts = updateRawEntities(contacts, contactRepo, this::findContact);
-//
-//        newPerson.setContacts(persistedContacts);
-//    }
-//
-//    private Contact findContact(Contact rawContact) {
-//        if (rawContact == null || rawContact.getPhoneNumber() == null) {
-//            throw new IllegalStateException("Contact entity is incorrect to be used in a search");
-//        }
-//
-//        return contactRepo.findByPhoneNumber(rawContact.getPhoneNumber());
-//    }
-
-//    private void fetchOrSaveIdentityDocuments(Person newPerson) {
-//        List<IdentityDocument> ids = Optional.of(newPerson.getIdentityDocuments()).orElse(new ArrayList<>());
-//        List<IdentityDocument> persistedIds = updateRawEntities(ids, idRepo, this::findIdentityDocument);
-//
-//        newPerson.setIdentityDocuments(persistedIds);
-//    }
-//
-//    private IdentityDocument findIdentityDocument(IdentityDocument rawId) {
-//        if (rawId == null || rawId.getType() == null || rawId.getFullNumber() == null) {
-//            throw new IllegalStateException("IdentityDocument entity is incorrect to be used in a search");
-//        }
-//
-//        return idRepo.findByTypeAndFullNumber(rawId.getType(), rawId.getFullNumber());
-//    }
-
 
     // TODO add tests
     @Override

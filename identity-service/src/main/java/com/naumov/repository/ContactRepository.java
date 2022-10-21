@@ -11,5 +11,6 @@ import java.util.List;
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface ContactRepository extends JpaRepository<Contact, Long> {
+    boolean existsByPhoneNumber(String phoneNumber);
     List<Contact> findAllByPhoneNumberIn(List<String> phoneNumbers);
 }
