@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
+@Transactional
 class PersonServiceCreateTest {
     @Autowired
     PersonService personService;
@@ -39,7 +40,6 @@ class PersonServiceCreateTest {
     PersonAddressRepository personAddressRepository;
 
     @Test
-    @Transactional
     void createPersonWithAllNewRelations() {
         Person newPerson = Person.builder()
                 .name("Person")
@@ -88,7 +88,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithOneExistingAddress() {
         Region region0 = regionRepository.findAll().get(0);
         Region region1 = regionRepository.findAll().get(1);
@@ -124,7 +123,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithoutName() {
         Person newPerson = simplePersonBuilder()
                 .name(null)
@@ -137,7 +135,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithoutDateOfBirth() {
         Person newPerson = simplePersonBuilder()
                 .dateOfBirth(null)
@@ -150,7 +147,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithoutIsHidden() {
         Person newPerson = simplePersonBuilder()
                 .isHidden(null)
@@ -163,7 +159,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithoutAddresses() {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setAddressRecords(null);
@@ -173,7 +168,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithoutContacts() {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setContacts(null);
@@ -183,7 +177,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createPersonWithoutIdentityDocuments() {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setIdentityDocuments(null);
@@ -194,7 +187,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createTwoPeopleWithTheSameDocument() {
         Person p1 = simplePersonBuilder()
                 .phoneNumber("+70987654321")
@@ -209,7 +201,6 @@ class PersonServiceCreateTest {
     }
 
     @Test
-    @Transactional
     void createTwoPeopleWithTheSameContact() {
         Person p1 = simplePersonBuilder()
                 .documentType(IdentityDocument.DocumentType.PENSION_ID)
