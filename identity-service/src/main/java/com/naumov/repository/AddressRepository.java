@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
@@ -22,5 +22,5 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 
     @Query("DELETE FROM Address a WHERE a.id IN :ids AND a.personRecords IS EMPTY")
     @Modifying
-    void deleteAddressesByIdInAndPersonRecordsIsEmpty(List<Long> ids);
+    void deleteAddressesByIdInAndPersonRecordsIsEmpty(Set<Long> ids);
 }

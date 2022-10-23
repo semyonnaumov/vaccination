@@ -164,7 +164,7 @@ class PersonServiceCreateTest {
         newPerson.setAddressRecords(null);
         Person createdPerson = personService.createPerson(newPerson);
         personRepository.flush();
-        assertThat(createdPerson.getAddressRecords()).isEmpty();
+        assertThat(createdPerson.getAddressRecords()).isNull();
     }
 
     @Test
