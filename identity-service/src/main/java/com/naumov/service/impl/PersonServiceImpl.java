@@ -187,8 +187,8 @@ public class PersonServiceImpl implements PersonService {
                 .filter(PersonAddress::getIsRegistration)
                 .count();
 
-        if (count > 1) {
-            throw new ResourceConflictException("Person cannot have multiple registration addresses");
+        if (count != 1) {
+            throw new ResourceConflictException("Person must have exactly one registration addresses");
         }
     }
 
