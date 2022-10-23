@@ -213,7 +213,8 @@ class PersonServiceUpdateTest {
     }
 
     @Test
-    void deletedAllAddresses() {
+    // TODO fix this
+    void deleteAllAddresses() {
         Person newPerson = simplePersonBuilder().build();
         Person savedPerson = personService.createPerson(newPerson);
 
@@ -227,8 +228,10 @@ class PersonServiceUpdateTest {
                 .build();
 
         updatedPerson.setAddressRecords(null);
+        Person person = personService.updatePerson(updatedPerson);
 
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceConflictException.class);
+        assertThat(person.getAddressRecords()).isNull();
+        assertThat(addressRepository.count()).isEqualTo(0);
     }
 
     // TODO add addresses tests
