@@ -187,7 +187,9 @@ public final class EntityTestUtil {
                 .isRegistration(isRegistration)
                 .build();
 
-        address.setPersonRecords(List.of(personAddress));
+        List<PersonAddress> personRecords = new ArrayList<>();
+        personRecords.add(personAddress);
+        address.setPersonRecords(personRecords);
 
         List<PersonAddress> personAddresses = person.getAddressRecords() != null
                 ? person.getAddressRecords()

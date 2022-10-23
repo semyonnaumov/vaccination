@@ -67,7 +67,7 @@ public class PersonServiceImpl implements PersonService {
         List<PersonAddress> newAddressRecords = newPerson.getAddressRecords();
         validateUniqueRegistrationAddress(newAddressRecords);
         List<Pair<Address, Boolean>> savedAddresses = saveOrLoadAddresses(newAddressRecords, false);
-        updateAddressesRecords(newPerson, savedAddresses);
+        createAndSetAddressRecords(newPerson, savedAddresses);
 
         // All associations except Address entities are saved here using cascade.
         return personRepository.save(newPerson);
@@ -103,7 +103,7 @@ public class PersonServiceImpl implements PersonService {
         if (personId == null) throw new ResourceUpdateException("Updated person must have an id");
 
         // loads the old addresses eagerly as well
-        Person persistedPerson = personRepository.findById(personId).orElseThrow(() ->
+        Person originalPerson = personRepository.findById(personId).orElseThrow(() ->
                 new ResourceNotFoundException("Person with id=" + personId + " does not exist"));
 
         validateIdentityDocumentsForUpdate(updatedPerson.getIdentityDocuments());
@@ -112,12 +112,12 @@ public class PersonServiceImpl implements PersonService {
         List<PersonAddress> newAddressRecords = updatedPerson.getAddressRecords();
         validateUniqueRegistrationAddress(newAddressRecords);
         List<Pair<Address, Boolean>> updatedAddresses = saveOrLoadAddresses(newAddressRecords, true);
-        updateAddressesRecords(updatedPerson, updatedAddresses);
+        createOrFindAndSetAddressRecords(updatedPerson, updatedAddresses, originalPerson.getAddressRecords());
 
         // All associations except Address entities are saved here using cascade.
         Person person = personRepository.save(updatedPerson);
 
-        deleteAddressesIfUnused(persistedPerson.getAddressRecords());
+        deleteAddressesIfUnused(originalPerson.getAddressRecords());
         return person;
     }
 
@@ -253,16 +253,42 @@ public class PersonServiceImpl implements PersonService {
         ).orElseGet(() -> addressRepository.save(transientAddress));
     }
 
-    private void updateAddressesRecords(Person transientPerson, List<Pair<Address, Boolean>> savedAddresses) {
-        List<PersonAddress> updatedPersonAddresses = savedAddresses.stream()
+    private void createAndSetAddressRecords(Person newPerson,
+                                            List<Pair<Address, Boolean>> newAddresses) {
+        List<PersonAddress> updatedPersonAddresses = newAddresses.stream()
                 .map(pair -> PersonAddress.builder()
-                        .person(transientPerson)
+                        .person(newPerson)
                         .address(pair.getFirst())
                         .isRegistration(pair.getSecond())
                         .build())
                 .collect(Collectors.toList());
 
-        transientPerson.setAddressRecords(updatedPersonAddresses);
+        newPerson.setAddressRecords(updatedPersonAddresses);
+    }
+
+    private void createOrFindAndSetAddressRecords(Person updatedPerson,
+                                                  List<Pair<Address, Boolean>> updatedAddresses,
+                                                  List<PersonAddress> originalAddressRecords) {
+        List<PersonAddress> updatedPersonAddresses = new ArrayList<>();
+        for (Pair<Address, Boolean> updatedAddress : updatedAddresses) {
+            PersonAddress matchingOriginalRecord = Optional.ofNullable(originalAddressRecords)
+                    .orElse(Collections.emptyList())
+                    .stream()
+                    .filter(ar -> ar.getAddress().getId().equals(updatedAddress.getFirst().getId()))
+                    .findFirst().orElse(null);
+            if (matchingOriginalRecord != null) {
+                updatedPersonAddresses.add(matchingOriginalRecord);
+            } else {
+                PersonAddress newRecord = PersonAddress.builder()
+                        .person(updatedPerson)
+                        .address(updatedAddress.getFirst())
+                        .isRegistration(updatedAddress.getSecond())
+                        .build();
+                updatedPersonAddresses.add(newRecord);
+            }
+        }
+
+        updatedPerson.setAddressRecords(updatedPersonAddresses);
     }
 
     private void deleteAddressesIfUnused(List<PersonAddress> addressRecords) {

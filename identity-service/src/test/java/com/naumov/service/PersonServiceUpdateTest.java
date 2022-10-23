@@ -9,7 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 import static com.naumov.EntityTestUtil.SimplePersonBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 // TODO
@@ -33,15 +36,43 @@ class PersonServiceUpdateTest {
 
     @Test
     void updateEntityWithoutId() {
-        Person person = simplePersonBuilder().build();
-        personService.createPerson(person);
-        personRepository.flush();
+        Person updatedPerson = simplePersonBuilder().build();
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceUpdateException.class);
+    }
 
-        Person updatePerson = simplePersonBuilder()
-                .id(null)
+    @Test
+    void regularSimpleUpdate() {
+        Person newPerson = simplePersonBuilder().build();
+        Person savedPerson = personService.createPerson(newPerson);
+
+        assertThat(personRepository.count()).isEqualTo(1);
+        assertThat(addressRepository.count()).isEqualTo(1);
+        assertThat(contactRepository.count()).isEqualTo(1);
+        assertThat(identityDocumentRepository.count()).isEqualTo(1);
+        assertThat(personAddressRepository.count()).isEqualTo(1);
+
+        Long id = savedPerson.getId();
+        Person updatedPerson = simplePersonBuilder()
+                .id(id)
+                .contactId(savedPerson.getContacts().get(0).getId())
+                .identityDocumentId(savedPerson.getIdentityDocuments().get(0).getId())
+                .addressRecordId(savedPerson.getAddressRecords().get(0).getId())
+                .addressId(savedPerson.getAddressRecords().get(0).getAddress().getId())
+                .name("Updated name")
+                .dateOfBirth(LocalDate.MAX)
                 .build();
 
-        assertThatThrownBy(() -> personService.updatePerson(updatePerson)).isInstanceOf(ResourceUpdateException.class);
+        personService.updatePerson(updatedPerson);
+
+        assertThat(personRepository.count()).isEqualTo(1);
+        assertThat(addressRepository.count()).isEqualTo(1);
+        assertThat(contactRepository.count()).isEqualTo(1);
+        assertThat(identityDocumentRepository.count()).isEqualTo(1);
+        assertThat(personAddressRepository.count()).isEqualTo(1);
+
+        Person person = personRepository.getReferenceById(id);
+        assertThat(person.getName()).isEqualTo("Updated name");
+        assertThat(person.getDateOfBirth()).isEqualTo(LocalDate.MAX);
     }
 
 //    @Test
