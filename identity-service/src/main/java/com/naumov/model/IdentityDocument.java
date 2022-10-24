@@ -1,6 +1,8 @@
 package com.naumov.model;
 
-import lombok.*;
+import com.naumov.util.AbstractBuilder;
+import lombok.Getter;
+import lombok.Setter;
 
 import javax.persistence.*;
 import java.time.LocalDate;
@@ -9,9 +11,6 @@ import static com.naumov.util.JsonUtil.*;
 
 @Getter
 @Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
 @Entity
 @Table(
         name = "identity_documents",
@@ -33,7 +32,7 @@ public class IdentityDocument implements IdentifiableEntity {
     @JoinColumn(name = "owner_id", nullable = false)
     private Person owner;
     @Column(name = "is_primary", nullable = false)
-    private Boolean isPrimary;
+    private Boolean isPrimary = false;
 
     @Override
     public String toString() {
@@ -52,5 +51,46 @@ public class IdentityDocument implements IdentifiableEntity {
         INTERNATIONAL_PASSPORT,
         PENSION_ID,
         MEDICAL_INSURANCE
+    }
+
+    // Manual builder since we want to preserve field defaults (Lombok's builder overwrites them)
+    public static IdentityDocumentBuilder builder() {
+        return new IdentityDocumentBuilder();
+    }
+
+    public static class IdentityDocumentBuilder extends AbstractBuilder<IdentityDocument> {
+        private IdentityDocumentBuilder() {
+            super(IdentityDocument::new);
+        }
+
+        public IdentityDocumentBuilder id(Long id) {
+            getInstance().id = id;
+            return this;
+        }
+
+        public IdentityDocumentBuilder type(DocumentType type) {
+            getInstance().type = type;
+            return this;
+        }
+
+        public IdentityDocumentBuilder fullNumber(String fullNumber) {
+            getInstance().fullNumber = fullNumber;
+            return this;
+        }
+
+        public IdentityDocumentBuilder issueDate(LocalDate issueDate) {
+            getInstance().issueDate = issueDate;
+            return this;
+        }
+
+        public IdentityDocumentBuilder owner(Person owner) {
+            getInstance().owner = owner;
+            return this;
+        }
+
+        public IdentityDocumentBuilder isPrimary(Boolean isPrimary) {
+            getInstance().isPrimary = isPrimary;
+            return this;
+        }
     }
 }

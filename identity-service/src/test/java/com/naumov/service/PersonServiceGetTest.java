@@ -38,7 +38,6 @@ class PersonServiceGetTest {
     void getExistingPerson() {
         Region region0 = regionRepository.findAll().get(0);
         Person savedPerson = personService.createPerson(simplePersonBuilder(region0).build());
-        personRepository.flush();
         Person foundPerson = personService.getPerson(savedPerson.getId());
 
         assertThat(foundPerson).isNotNull();
@@ -52,10 +51,8 @@ class PersonServiceGetTest {
 
     @Test
     void getNonExistingPerson() {
-        assertThatThrownBy(() -> {
-            personService.getPerson(-1L);
-            personRepository.flush();
-        }).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> personService.getPerson(-1L))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -101,7 +98,6 @@ class PersonServiceGetTest {
 
         personService.createPerson(person10);
 
-        personRepository.flush();
         assertThat(personRepository.count()).isEqualTo(4);
 
         // test search by region

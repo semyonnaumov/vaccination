@@ -60,7 +60,6 @@ class PersonServiceCreateTest {
         addIdentityDocument(newPerson, IdentityDocument.DocumentType.PENSION_ID, "2626262626262626", "2021-12-21", false);
 
         Person savedPerson = personService.createPerson(newPerson);
-        personRepository.flush();
 
         // assertions
         assertThat(savedPerson.getName()).isEqualTo(newPerson.getName());
@@ -113,8 +112,6 @@ class PersonServiceCreateTest {
         addAddressRecord(newPerson, region1, "Address line 1", true);
         Person savedPerson = personService.createPerson(newPerson);
 
-        personRepository.flush();
-
         // assertions
         assertThat(existingPerson.getAddressRecords().size()).isEqualTo(1);
         assertThat(savedPerson.getAddressRecords().size()).isEqualTo(2);
@@ -130,7 +127,7 @@ class PersonServiceCreateTest {
 
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
-            personRepository.flush();
+            personRepository.flush(); // needed to generate INSERT, otherwise ignored upon test transaction rollback
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -142,7 +139,7 @@ class PersonServiceCreateTest {
 
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
-            personRepository.flush();
+            personRepository.flush(); // needed to generate INSERT, otherwise ignored upon test transaction rollback
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -154,7 +151,7 @@ class PersonServiceCreateTest {
 
         assertThatThrownBy(() -> {
             personService.createPerson(newPerson);
-            personRepository.flush();
+            personRepository.flush(); // needed to generate INSERT, otherwise ignored upon test transaction rollback
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -163,8 +160,10 @@ class PersonServiceCreateTest {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setAddressRecords(null);
         Person createdPerson = personService.createPerson(newPerson);
-        personRepository.flush();
-        assertThat(createdPerson.getAddressRecords()).isNull();
+
+        assertThat(createdPerson.getAddressRecords()).isEmpty();
+        assertThat(personAddressRepository.count()).isEqualTo(0);
+        assertThat(addressRepository.count()).isEqualTo(0);
     }
 
     @Test
@@ -172,18 +171,17 @@ class PersonServiceCreateTest {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setContacts(null);
         Person createdPerson = personService.createPerson(newPerson);
-        personRepository.flush();
-        assertThat(createdPerson.getContacts()).isNull();
+
+        assertThat(createdPerson.getContacts()).isEmpty();
+        assertThat(contactRepository.count()).isEqualTo(0);
     }
 
     @Test
     void createPersonWithoutIdentityDocuments() {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setIdentityDocuments(null);
-        assertThatThrownBy(() -> {
-            personService.createPerson(newPerson);
-            personRepository.flush();
-        }).isInstanceOf(ResourceConflictException.class);
+        assertThatThrownBy(() -> personService.createPerson(newPerson))
+                .isInstanceOf(ResourceConflictException.class);
     }
 
     @Test
@@ -194,10 +192,8 @@ class PersonServiceCreateTest {
         personService.createPerson(p1);
 
         Person p2 = simplePersonBuilder().build();
-        assertThatThrownBy(() -> {
-            personService.createPerson(p2);
-            personRepository.flush();
-        }).isInstanceOf(ResourceCreationException.class);
+        assertThatThrownBy(() -> personService.createPerson(p2))
+                .isInstanceOf(ResourceCreationException.class);
     }
 
     @Test
@@ -208,10 +204,8 @@ class PersonServiceCreateTest {
         personService.createPerson(p1);
 
         Person p2 = simplePersonBuilder().build();
-        assertThatThrownBy(() -> {
-            personService.createPerson(p2);
-            personRepository.flush();
-        }).isInstanceOf(ResourceCreationException.class);
+        assertThatThrownBy(() -> personService.createPerson(p2))
+                .isInstanceOf(ResourceCreationException.class);
     }
 
     private SimplePersonBuilder simplePersonBuilder() {

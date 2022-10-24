@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collections;
 
 import static com.naumov.EntityTestUtil.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +42,8 @@ class PersonServiceUpdateTest {
     @Test
     void updateEntityWithoutId() {
         Person updatedPerson = simplePersonBuilder().build();
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceUpdateException.class);
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceUpdateException.class);
     }
 
     @Test
@@ -108,6 +110,50 @@ class PersonServiceUpdateTest {
     }
 
     @Test
+    void removeAllAssociatedContacts() {
+        Person newPerson = simplePersonBuilder().build();
+        Person savedPerson = personService.createPerson(newPerson);
+
+        assertReposStateIsValid();
+
+        Long id = savedPerson.getId();
+        Person updatedPerson = simplePersonBuilder()
+                .id(id)
+                .contactId(savedPerson.getContacts().get(0).getId())
+                .identityDocumentId(savedPerson.getIdentityDocuments().get(0).getId())
+                .addressRecordId(savedPerson.getAddressRecords().get(0).getId())
+                .addressId(savedPerson.getAddressRecords().get(0).getAddress().getId())
+                .build();
+
+        updatedPerson.setContacts(Collections.emptyList());
+        Person person = personService.updatePerson(updatedPerson);
+        assertThat(person.getContacts()).isEmpty();
+        assertThat(contactRepository.count()).isEqualTo(0);
+    }
+
+
+    @Test
+    void removeAllAssociatedIdentityDocuments() {
+        Person newPerson = simplePersonBuilder().build();
+        Person savedPerson = personService.createPerson(newPerson);
+
+        assertReposStateIsValid();
+
+        Long id = savedPerson.getId();
+        Person updatedPerson = simplePersonBuilder()
+                .id(id)
+                .contactId(savedPerson.getContacts().get(0).getId())
+                .identityDocumentId(savedPerson.getIdentityDocuments().get(0).getId())
+                .addressRecordId(savedPerson.getAddressRecords().get(0).getId())
+                .addressId(savedPerson.getAddressRecords().get(0).getAddress().getId())
+                .build();
+
+        updatedPerson.setIdentityDocuments(Collections.emptyList());
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceConflictException.class);
+    }
+
+    @Test
     void addContactWithUnknownId() {
         Person newPerson = simplePersonBuilder().build();
         Person savedPerson = personService.createPerson(newPerson);
@@ -125,7 +171,8 @@ class PersonServiceUpdateTest {
 
         addContact(-1L, updatedPerson, "+70987654321");
 
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -146,7 +193,8 @@ class PersonServiceUpdateTest {
 
         addContact(updatedPerson, savedPerson.getContacts().get(0).getPhoneNumber());
 
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceCreationException.class);
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceCreationException.class);
     }
 
     @Test
@@ -167,7 +215,8 @@ class PersonServiceUpdateTest {
 
         addIdentityDocument(-1L, updatedPerson, IdentityDocument.DocumentType.MEDICAL_INSURANCE, "00000", "2000-12-12", false);
 
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -188,7 +237,8 @@ class PersonServiceUpdateTest {
 
         addIdentityDocument(updatedPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", false);
 
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceCreationException.class);
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceCreationException.class);
     }
 
     @Test
@@ -209,11 +259,11 @@ class PersonServiceUpdateTest {
 
         addIdentityDocument(updatedPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "22222", "1999-12-12", true);
 
-        assertThatThrownBy(() -> personService.updatePerson(updatedPerson)).isInstanceOf(ResourceConflictException.class);
+        assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
+                .isInstanceOf(ResourceConflictException.class);
     }
 
     @Test
-    // TODO fix this
     void deleteAllAddresses() {
         Person newPerson = simplePersonBuilder().build();
         Person savedPerson = personService.createPerson(newPerson);
@@ -227,14 +277,15 @@ class PersonServiceUpdateTest {
                 .identityDocumentId(savedPerson.getIdentityDocuments().get(0).getId())
                 .build();
 
-        updatedPerson.setAddressRecords(null);
+        updatedPerson.setAddressRecords(Collections.emptyList());
         Person person = personService.updatePerson(updatedPerson);
 
-        assertThat(person.getAddressRecords()).isNull();
+        assertThat(person.getAddressRecords()).isEmpty();
+        assertThat(personAddressRepository.count()).isEqualTo(0);
         assertThat(addressRepository.count()).isEqualTo(0);
     }
 
-    // TODO add addresses tests
+    // TODO add more addresses tests
 
     private void assertReposStateIsValid() {
         assertThat(personRepository.count()).isEqualTo(1);

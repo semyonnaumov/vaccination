@@ -59,7 +59,7 @@ public class PersonServiceImpl implements PersonService {
 
         validateIdentityDocuments(newPerson.getIdentityDocuments(), false);
         validateContacts(newPerson.getContacts(), false);
-        validateUniqueRegistrationAddress(newPerson.getAddressRecords());
+        validateAddressRecords(newPerson.getAddressRecords());
         saveOrLoadAddresses(newPerson, false);
 
         // All associations except Address entities are saved here using cascade.
@@ -102,7 +102,7 @@ public class PersonServiceImpl implements PersonService {
 
         validateIdentityDocuments(updatedPerson.getIdentityDocuments(), true);
         validateContacts(updatedPerson.getContacts(), true);
-        validateUniqueRegistrationAddress(updatedPerson.getAddressRecords());
+        validateAddressRecords(updatedPerson.getAddressRecords());
         saveOrLoadAddresses(updatedPerson, true);
 
         // All associations except Address entities are saved here using cascade.
@@ -131,6 +131,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     private void validateIdentityDocuments(List<IdentityDocument> identityDocuments, boolean allowUpdate) {
+        if (identityDocuments == null) throw new ResourceConflictException("Person's identityDocuments cannot be null");
         validateExactlyOnePrimaryIdentityDocument(identityDocuments);
 
         for (IdentityDocument id : identityDocuments) {
@@ -152,7 +153,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     private void validateExactlyOnePrimaryIdentityDocument(List<IdentityDocument> identityDocuments) {
-        long count = Optional.ofNullable(identityDocuments).orElse(Collections.emptyList()).stream()
+        long count = identityDocuments.stream()
                 .filter(IdentityDocument::getIsPrimary)
                 .count();
 
@@ -162,7 +163,7 @@ public class PersonServiceImpl implements PersonService {
     }
 
     private void validateContacts(List<Contact> contacts, boolean allowUpdate) {
-        if (contacts == null) return;
+        if (contacts == null) throw new ResourceConflictException("Person's contacts cannot be null");
 
         for (Contact contact : contacts) {
             Long contactId = contact.getId();
@@ -182,8 +183,10 @@ public class PersonServiceImpl implements PersonService {
         }
     }
 
-    private void validateUniqueRegistrationAddress(List<PersonAddress> personAddresses) {
-        long count = Optional.ofNullable(personAddresses).orElse(Collections.emptyList()).stream()
+    private void validateAddressRecords(List<PersonAddress> addressRecords) {
+        if (addressRecords == null) throw new ResourceConflictException("Person's addressRecords cannot be null");
+
+        long count = addressRecords.stream()
                 .filter(PersonAddress::getIsRegistration)
                 .count();
 
