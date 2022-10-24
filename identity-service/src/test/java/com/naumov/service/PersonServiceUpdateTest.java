@@ -7,6 +7,7 @@ import com.naumov.exception.ResourceNotFoundException;
 import com.naumov.exception.ResourceUpdateException;
 import com.naumov.model.IdentityDocument;
 import com.naumov.model.Person;
+import com.naumov.model.Region;
 import com.naumov.repository.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -285,7 +286,57 @@ class PersonServiceUpdateTest {
         assertThat(addressRepository.count()).isEqualTo(0);
     }
 
-    // TODO add more addresses tests
+    @Test
+    void removeCommonAddressFromOnePerson() {
+        Region region0 = regionRepository.findAll().get(0);
+        Region region1 = regionRepository.findAll().get(1);
+
+        // prepare DB
+        Person person0 = Person.builder()
+                .name("Person 0")
+                .dateOfBirth(LocalDate.EPOCH)
+                .isHidden(false)
+                .build();
+        addIdentityDocument(person0, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", true);
+        addAddressRecord(person0, region0, "Address line 0", true);
+        personService.createPerson(person0);
+
+        // test adding new person with existing address
+        Person person1 = Person.builder()
+                .name("Person 1")
+                .dateOfBirth(LocalDate.EPOCH)
+                .isHidden(true)
+                .build();
+        addIdentityDocument(person1, IdentityDocument.DocumentType.INTERNATIONAL_PASSPORT, "0123401234", "2001-01-01", true);
+        addAddressRecord(person1, region0, "Address line 0", false);
+        addAddressRecord(person1, region1, "Address line 1", true);
+        Person savedPerson1 = personService.createPerson(person1);
+
+        assertThat(addressRepository.count()).isEqualTo(2);
+        assertThat(personAddressRepository.count()).isEqualTo(3);
+
+        // update person1
+        Person newPerson1 = Person.builder()
+                .id(savedPerson1.getId())
+                .name("Person 1")
+                .dateOfBirth(LocalDate.EPOCH)
+                .isHidden(true)
+                .build();
+        addIdentityDocument(savedPerson1.getIdentityDocuments().get(0).getId(), newPerson1, IdentityDocument.DocumentType.INTERNATIONAL_PASSPORT, "0123401234", "2001-01-01", true);
+        addAddressRecord(
+                savedPerson1.getAddressRecords().get(1).getAddress().getId(),
+                savedPerson1.getAddressRecords().get(1).getId(),
+                newPerson1,
+                region1,
+                "Address line 1",
+                true
+        );
+
+        Person updatedPerson1 = personService.updatePerson(newPerson1);
+        assertThat(updatedPerson1.getAddressRecords().size()).isEqualTo(1);
+        assertThat(addressRepository.count()).isEqualTo(2);
+        assertThat(personAddressRepository.count()).isEqualTo(2);
+    }
 
     private void assertReposStateIsValid() {
         assertThat(personRepository.count()).isEqualTo(1);
@@ -294,42 +345,6 @@ class PersonServiceUpdateTest {
         assertThat(identityDocumentRepository.count()).isEqualTo(1);
         assertThat(personAddressRepository.count()).isEqualTo(1);
     }
-
-//    @Test
-//    @Transactional
-//    void createPersonWithOneExistingAddress() {
-//        Region region0 = regionRepository.findAll().get(0);
-//        Region region1 = regionRepository.findAll().get(1);
-//
-//        // prepare DB
-//        Person transientExistingPerson = Person.builder()
-//                .name("Person 0")
-//                .dateOfBirth(LocalDate.EPOCH)
-//                .isHidden(false)
-//                .build();
-//        addIdentityDocument(transientExistingPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", true);
-//        addAddressRecord(transientExistingPerson, region0, "Address line 0", true);
-//        Person existingPerson = personService.createPerson(transientExistingPerson);
-//
-//        // test adding new person with existing address
-//        Person newPerson = Person.builder()
-//                .name("Person 1")
-//                .dateOfBirth(LocalDate.EPOCH)
-//                .isHidden(true)
-//                .build();
-//        addIdentityDocument(newPerson, IdentityDocument.DocumentType.INTERNATIONAL_PASSPORT, "0123401234", "2001-01-01", true);
-//        addAddressRecord(newPerson, region0, "Address line 0", false);
-//        addAddressRecord(newPerson, region1, "Address line 1", true);
-//        Person savedPerson = personService.createPerson(newPerson);
-//
-//        personRepository.flush();
-//
-//        // assertions
-//        assertThat(existingPerson.getAddressRecords().size()).isEqualTo(1);
-//        assertThat(savedPerson.getAddressRecords().size()).isEqualTo(2);
-//        assertThat(addressRepository.count()).isEqualTo(2);
-//        assertThat(personAddressRepository.count()).isEqualTo(3);
-//    }
 
     private SimplePersonBuilder simplePersonBuilder() {
         return EntityTestUtil.simplePersonBuilder(regionRepository.findAll().get(0));
