@@ -1,8 +1,7 @@
 package com.naumov.controller;
 
 import com.naumov.dto.DtoConverter;
-import com.naumov.dto.rq.PersonCreateRequest;
-import com.naumov.dto.rq.PersonUpdateRequest;
+import com.naumov.dto.rq.PersonCreateUpdateRequest;
 import com.naumov.dto.rs.DefaultErrorResponse;
 import com.naumov.dto.rs.PersonCreateUpdateResponse;
 import com.naumov.dto.rs.PersonGetBulkResponse;
@@ -43,8 +42,8 @@ public class PersonController {
 
     // TODO add test
     @PostMapping
-    public ResponseEntity<PersonCreateUpdateResponse> createPerson(@Valid @RequestBody PersonCreateRequest personCreateRequest) {
-        Person newPerson = personService.createPerson(dtoConverter.fromPersonCreateRequest(personCreateRequest));
+    public ResponseEntity<PersonCreateUpdateResponse> createPerson(@Valid @RequestBody PersonCreateUpdateRequest personCreateRequest) {
+        Person newPerson = personService.createPerson(dtoConverter.fromPersonCreateUpdateRequest(personCreateRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoConverter.toPersonCreateUpdateResponse(newPerson));
     }
 
@@ -58,8 +57,8 @@ public class PersonController {
     // return 200 or 201?
     // TODO add test
     @PutMapping
-    public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonUpdateRequest personUpdateRequest) {
-        Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateRequest(personUpdateRequest));
+    public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonCreateUpdateRequest personUpdateRequest) {
+        Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateUpdateRequest(personUpdateRequest));
         return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonCreateUpdateResponse(updatedPerson));
     }
 
