@@ -21,7 +21,6 @@ import static com.naumov.EntityTestUtil.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-// TODO
 @SpringBootTest
 @Transactional
 class PersonServiceUpdateTest {

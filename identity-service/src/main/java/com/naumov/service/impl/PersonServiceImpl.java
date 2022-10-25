@@ -311,11 +311,9 @@ public class PersonServiceImpl implements PersonService {
         return peoplePage;
     }
 
-    // TODO add tests
     @Override
     @Transactional(readOnly = true)
     public boolean verifyPassport(String fullName, String passportNumber) {
-        // TODO implement
-        throw new UnsupportedOperationException("Not implemented");
+        return personRepository.verifyPassport(fullName, passportNumber);
     }
 }

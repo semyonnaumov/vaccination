@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-// TODO test generated SQL
 @Repository
 @Transactional(propagation = Propagation.MANDATORY)
 public interface PersonRepository extends JpaRepository<Person, Long> {
@@ -61,4 +60,10 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "ORDER BY p.id")
     List<Person> findAllByIdsFetchIdentityDocuments(List<Long> ids);
 
+    @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Person p " +
+            "JOIN p.identityDocuments id " +
+            "WHERE p.name = :fullName " +
+            "AND id.type = 'INNER_PASSPORT' " +
+            "AND id.fullNumber = :passportNumber")
+    boolean verifyPassport(String fullName, String passportNumber);
 }
