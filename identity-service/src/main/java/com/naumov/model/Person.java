@@ -47,7 +47,6 @@ public class Person implements IdentifiableEntity {
 
     public void setAddressRecords(List<PersonAddress> addressRecords) {
         this.addressRecords = Optional.ofNullable(addressRecords).orElseGet(ArrayList::new);
-        ;
     }
 
     public List<Contact> getContacts() {
@@ -64,7 +63,6 @@ public class Person implements IdentifiableEntity {
 
     public void setIdentityDocuments(List<IdentityDocument> identityDocuments) {
         this.identityDocuments = Optional.ofNullable(identityDocuments).orElseGet(ArrayList::new);
-        ;
     }
 
     @Override
