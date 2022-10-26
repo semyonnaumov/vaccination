@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -93,12 +94,36 @@ public class PersonController {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<DefaultErrorResponse> handleNotFoundExceptions(Exception e) {
-        LOGGER.error("Not found exception handling, returning {}", HttpStatus.NOT_FOUND, e);
+        LOGGER.error("Resource not found, returning {}", HttpStatus.NOT_FOUND, e);
 
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .headers(httpHeaders)
+                .body(new DefaultErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<DefaultErrorResponse> handleHttpMessageNotReadableException(Exception e) {
+        LOGGER.error("Bad request, returning {}", HttpStatus.BAD_REQUEST, e);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .headers(httpHeaders)
+                .body(new DefaultErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<DefaultErrorResponse> handleAllOtherExceptions(Exception e) {
+        LOGGER.error("General exception handling, returning {}", HttpStatus.INTERNAL_SERVER_ERROR, e);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .headers(httpHeaders)
                 .body(new DefaultErrorResponse(e.getMessage()));
     }

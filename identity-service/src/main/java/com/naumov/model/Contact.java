@@ -19,7 +19,7 @@ public class Contact implements IdentifiableEntity {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "contacts_gen")
     @SequenceGenerator(name = "contacts_gen", sequenceName = "contacts_seq", allocationSize = 10)
     private Long id;
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     private Person owner;
     @Column(name = "phone_number", length = 12, nullable = false, unique = true)

@@ -5,10 +5,7 @@ import com.naumov.exception.ResourceCreationException;
 import com.naumov.exception.ResourceNotFoundException;
 import com.naumov.exception.ResourceUpdateException;
 import com.naumov.model.*;
-import com.naumov.repository.AddressRepository;
-import com.naumov.repository.ContactRepository;
-import com.naumov.repository.IdentityDocumentRepository;
-import com.naumov.repository.PersonRepository;
+import com.naumov.repository.*;
 import com.naumov.service.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -24,16 +21,19 @@ public class PersonServiceImpl implements PersonService {
     private final AddressRepository addressRepository;
     private final ContactRepository contactRepository;
     private final IdentityDocumentRepository identityDocumentRepository;
+    private final RegionRepository regionRepository;
 
     @Autowired
     public PersonServiceImpl(PersonRepository personRepository,
                              AddressRepository addressRepository,
                              ContactRepository contactRepository,
-                             IdentityDocumentRepository identityDocumentRepository) {
+                             IdentityDocumentRepository identityDocumentRepository,
+                             RegionRepository regionRepository) {
         this.personRepository = personRepository;
         this.addressRepository = addressRepository;
         this.contactRepository = contactRepository;
         this.identityDocumentRepository = identityDocumentRepository;
+        this.regionRepository = regionRepository;
     }
 
     /*
@@ -221,12 +221,12 @@ public class PersonServiceImpl implements PersonService {
     }
 
     private Address saveOrLoadAddress(Address transientAddress, boolean allowUpdate) {
-        if (transientAddress == null) throw new ResourceConflictException("Person address must not be null");
-        if (transientAddress.getRegion() == null ||
-                transientAddress.getRegion().getName() == null ||
-                transientAddress.getAddress() == null) {
-            throw new ResourceConflictException("Person address must contain region and address");
-        }
+        if (transientAddress == null)
+            throw new ResourceConflictException("Person address must not be null");
+        if (transientAddress.getAddress() == null)
+            throw new ResourceConflictException("Person address must contain address");
+
+        loadAndSetRegion(transientAddress);
 
         Long addressId = transientAddress.getId();
         if (addressId != null) {
@@ -246,6 +246,16 @@ public class PersonServiceImpl implements PersonService {
                 transientAddress.getRegion().getName(),
                 transientAddress.getAddress()
         ).orElseGet(() -> addressRepository.save(transientAddress));
+    }
+
+    private void loadAndSetRegion(Address transientAddress) {
+        if (transientAddress.getRegion() == null || transientAddress.getRegion().getName() == null)
+            throw new ResourceConflictException("Person address must contain region with name");
+
+        String regionName = transientAddress.getRegion().getName();
+        Region region = regionRepository.findByName(regionName).orElseThrow(() ->
+                new ResourceConflictException("Person's address contains non-existing region with name=" + regionName));
+        transientAddress.setRegion(region);
     }
 
     private Optional<PersonAddress> findRelatedAddressRecordThroughAddress(Person person, Address address) {

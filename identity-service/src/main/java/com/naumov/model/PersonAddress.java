@@ -19,10 +19,10 @@ public class PersonAddress implements IdentifiableEntity {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "people_addresses_gen")
     @SequenceGenerator(name = "people_addresses_gen", sequenceName = "people_addresses_seq", allocationSize = 10)
     private Long id;
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "person_id", referencedColumnName = "id", nullable = false)
     private Person person;
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "address_id", referencedColumnName = "id", nullable = false)
     private Address address;
     @Column(name = "is_registration", nullable = false)

@@ -28,7 +28,7 @@ public class IdentityDocument implements IdentifiableEntity {
     private String fullNumber;
     @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;
-    @ManyToOne
+    @ManyToOne(optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     private Person owner;
     @Column(name = "is_primary", nullable = false)
