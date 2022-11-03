@@ -1,9 +1,6 @@
 package com.naumov.exception;
 
-public class ResourceConflictException extends RuntimeException {
-    public ResourceConflictException() {
-    }
-
+public class ResourceConflictException extends ResourceManipulationException {
     public ResourceConflictException(String message) {
         super(message);
     }

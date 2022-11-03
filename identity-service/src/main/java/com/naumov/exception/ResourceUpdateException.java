@@ -1,9 +1,6 @@
 package com.naumov.exception;
 
-public class ResourceUpdateException extends RuntimeException {
-    public ResourceUpdateException() {
-    }
-
+public class ResourceUpdateException extends ResourceManipulationException {
     public ResourceUpdateException(String message) {
         super(message);
     }

@@ -56,10 +56,11 @@ public class PersonServiceImpl implements PersonService {
     @Transactional
     public Person createPerson(Person newPerson) {
         if (newPerson == null) throw new ResourceCreationException("Created person cannot be null");
+        if (newPerson.getId() != null) throw new ResourceCreationException("Created person cannot have an ID");
 
         validateIdentityDocuments(newPerson.getIdentityDocuments(), false);
         validateContacts(newPerson.getContacts(), false);
-        validateAddressRecords(newPerson.getAddressRecords());
+        validateAddressRecords(newPerson.getAddressRecords(), false);
         saveOrLoadAddresses(newPerson, false);
 
         // All associations except Address entities are saved here using cascade.
@@ -102,7 +103,7 @@ public class PersonServiceImpl implements PersonService {
 
         validateIdentityDocuments(updatedPerson.getIdentityDocuments(), true);
         validateContacts(updatedPerson.getContacts(), true);
-        validateAddressRecords(updatedPerson.getAddressRecords());
+        validateAddressRecords(updatedPerson.getAddressRecords(), true);
         saveOrLoadAddresses(updatedPerson, true);
 
         // All associations except Address entities are saved here using cascade.
@@ -132,6 +133,13 @@ public class PersonServiceImpl implements PersonService {
 
     private void validateIdentityDocuments(List<IdentityDocument> identityDocuments, boolean allowUpdate) {
         if (identityDocuments == null) throw new ResourceConflictException("Person's identityDocuments cannot be null");
+
+        if (!allowUpdate) {
+            boolean anyIdExists = identityDocuments.stream().anyMatch(doc -> doc.getId() != null);
+            if (anyIdExists) throw new ResourceCreationException("None of person's identityDocuments should nave an ID " +
+                    "during person creation");
+        }
+
         validateExactlyOnePrimaryIdentityDocument(identityDocuments);
 
         for (IdentityDocument id : identityDocuments) {
@@ -165,6 +173,12 @@ public class PersonServiceImpl implements PersonService {
     private void validateContacts(List<Contact> contacts, boolean allowUpdate) {
         if (contacts == null) throw new ResourceConflictException("Person's contacts cannot be null");
 
+        if (!allowUpdate) {
+            boolean anyIdExists = contacts.stream().anyMatch(contact -> contact.getId() != null);
+            if (anyIdExists) throw new ResourceCreationException("None of person's contacts should nave an ID " +
+                    "during person creation");
+        }
+
         for (Contact contact : contacts) {
             Long contactId = contact.getId();
             String phoneNumber = contact.getPhoneNumber();
@@ -183,8 +197,20 @@ public class PersonServiceImpl implements PersonService {
         }
     }
 
-    private void validateAddressRecords(List<PersonAddress> addressRecords) {
+    private void validateAddressRecords(List<PersonAddress> addressRecords, boolean allowUpdate) {
         if (addressRecords == null) throw new ResourceConflictException("Person's addressRecords cannot be null");
+
+        if (!allowUpdate) {
+            boolean anyAddressRecordIdExists = addressRecords.stream().anyMatch(contact -> contact.getId() != null);
+            if (anyAddressRecordIdExists) throw new ResourceCreationException("None of person's addressRecords " +
+                    "should nave an ID during person creation");
+
+            boolean anyAddressIdExists = addressRecords.stream()
+                    .map(PersonAddress::getAddress)
+                    .anyMatch(contact -> contact.getId() != null);
+            if (anyAddressIdExists) throw new ResourceCreationException("None of person's addresses " +
+                    "should nave an ID during person creation");
+        }
 
         long count = addressRecords.stream()
                 .filter(PersonAddress::getIsRegistration)

@@ -6,7 +6,7 @@ import com.naumov.dto.rs.DefaultErrorResponse;
 import com.naumov.dto.rs.PersonCreateUpdateResponse;
 import com.naumov.dto.rs.PersonGetBulkResponse;
 import com.naumov.dto.rs.PersonGetResponse;
-import com.naumov.exception.ResourceNotFoundException;
+import com.naumov.exception.ResourceManipulationException;
 import com.naumov.model.Person;
 import com.naumov.service.PersonService;
 import org.apache.logging.log4j.LogManager;
@@ -92,20 +92,8 @@ public class PersonController {
         return personService.verifyPassport(fullName, passportNumber);
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<DefaultErrorResponse> handleNotFoundExceptions(Exception e) {
-        LOGGER.error("Resource not found, returning {}", HttpStatus.NOT_FOUND, e);
-
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .headers(httpHeaders)
-                .body(new DefaultErrorResponse(e.getMessage()));
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<DefaultErrorResponse> handleHttpMessageNotReadableException(Exception e) {
+    @ExceptionHandler({ResourceManipulationException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<DefaultErrorResponse> handleBadRequest(Exception e) {
         LOGGER.error("Bad request, returning {}", HttpStatus.BAD_REQUEST, e);
 
         HttpHeaders httpHeaders = new HttpHeaders();

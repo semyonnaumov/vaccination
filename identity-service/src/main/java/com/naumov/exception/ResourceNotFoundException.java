@@ -1,9 +1,6 @@
 package com.naumov.exception;
 
-public class ResourceNotFoundException extends RuntimeException {
-    public ResourceNotFoundException() {
-    }
-
+public class ResourceNotFoundException extends ResourceManipulationException {
     public ResourceNotFoundException(String message) {
         super(message);
     }
