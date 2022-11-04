@@ -8,9 +8,7 @@ import com.naumov.dto.rs.*;
 import com.naumov.model.*;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -56,7 +54,9 @@ public class DtoConverter {
         // be careful - this address might already have
         // more than one person records in DB
         // whether it has an id or not
-        address.setPersonRecords(List.of(personAddress));
+        List<PersonAddress> personRecords = new ArrayList<>();
+        personRecords.add(personAddress);
+        address.setPersonRecords(personRecords);
 
         return personAddress;
     }

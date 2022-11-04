@@ -13,8 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(
@@ -94,8 +96,43 @@ public class PersonControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @Transactional
+    public void successfullyUpdatePerson() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+
+        String createResponse = mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Long id = JsonPath.parse(createResponse).read("$.id", Long.class);
+
+        String getResponse = mvc.perform(get("/people/" + id))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+
+        DocumentContext createdPerson = JsonPath.parse(getResponse);
+        createdPerson = createdPerson.set("$.name", "New name");
+
+        mvc.perform(putPersonCreateUpdateRequest(createdPerson))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.name", equalTo("New name")));
+    }
+
     private MockHttpServletRequestBuilder postPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
         return post("/people")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(personCreateRequestJson.jsonString());
+    }
+
+    private MockHttpServletRequestBuilder putPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
+        return put("/people")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(personCreateRequestJson.jsonString());
     }

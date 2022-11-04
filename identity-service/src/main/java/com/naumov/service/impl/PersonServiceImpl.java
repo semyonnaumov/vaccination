@@ -284,6 +284,8 @@ public class PersonServiceImpl implements PersonService {
         transientAddress.setRegion(region);
     }
 
+    // TODO fix NPE here:
+    //  java.lang.NullPointerException: Cannot invoke "com.naumov.model.Person.getId()" because the return value of "com.naumov.model.PersonAddress.getPerson()" is null
     private Optional<PersonAddress> findRelatedAddressRecordThroughAddress(Person person, Address address) {
         if (person == null || person.getId() == null || address == null || address.getPersonRecords() == null)
             return Optional.empty();
