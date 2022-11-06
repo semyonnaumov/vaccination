@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -27,6 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // TODO explore separate configurations for tests segregation
 //@TestPropertySource(locations = "classpath:application-integrationtest.properties")
 public class PersonControllerTest {
+    private static final String peopleUrl = "/people";
+
     @Autowired
     private MockMvc mvc;
     @Autowired
@@ -60,7 +64,7 @@ public class PersonControllerTest {
     @Transactional
     public void createPersonWithId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
-        json = json.put("$", "id", 3);
+        json.put("$", "id", 3);
 
         mvc.perform(postPersonCreateUpdateRequest(json))
                 .andExpect(status().isBadRequest());
@@ -70,7 +74,7 @@ public class PersonControllerTest {
     @Transactional
     public void createPersonWithContactId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
-        json = json.put("$.contacts[*]", "id", 3);
+        json.put("$.contacts[*]", "id", 3);
 
         mvc.perform(postPersonCreateUpdateRequest(json))
                 .andExpect(status().isBadRequest());
@@ -80,7 +84,7 @@ public class PersonControllerTest {
     @Transactional
     public void createPersonWithAddressId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
-        json = json.put("$.addresses[*]", "id", 3);
+        json.put("$.addresses[*]", "id", 3);
 
         mvc.perform(postPersonCreateUpdateRequest(json))
                 .andExpect(status().isBadRequest());
@@ -90,7 +94,7 @@ public class PersonControllerTest {
     @Transactional
     public void createPersonWithIdentityDocumentId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
-        json = json.put("$.identity_documents[*]", "id", 3);
+        json.put("$.identity_documents[*]", "id", 3);
 
         mvc.perform(postPersonCreateUpdateRequest(json))
                 .andExpect(status().isBadRequest());
@@ -98,7 +102,7 @@ public class PersonControllerTest {
 
     @Test
     @Transactional
-    public void successfullyUpdatePerson() throws Exception {
+    public void updatePersonAddAddress() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
         String createResponse = mvc.perform(postPersonCreateUpdateRequest(json))
@@ -107,32 +111,76 @@ public class PersonControllerTest {
                 .getResponse()
                 .getContentAsString();
 
-        Long id = JsonPath.parse(createResponse).read("$.id", Long.class);
+        Long personId = JsonPath.parse(createResponse).read("$.id", Long.class);
 
-        String getResponse = mvc.perform(get("/people/" + id))
+        String getResponse = mvc.perform(get(peopleUrl + "/" + personId))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
 
         DocumentContext createdPerson = JsonPath.parse(getResponse);
-        createdPerson = createdPerson.set("$.name", "New name");
+
+        Map<String, Object> newAddress = new HashMap<>();
+        newAddress.put("region", "Москва");
+        newAddress.put("address", "New address line");
+        newAddress.put("registration_address", false);
+
+        createdPerson.add("$.addresses", newAddress);
 
         mvc.perform(putPersonCreateUpdateRequest(createdPerson))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id", notNullValue()))
-                .andExpect(jsonPath("$.name", equalTo("New name")));
+                .andExpect(jsonPath("$.addresses", hasSize(2)));
+    }
+
+    @Test
+    @Transactional
+    public void updatePersonWithoutId() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+
+        mvc.perform(putPersonCreateUpdateRequest(json))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Transactional
+    public void updatePersonRemoveAddresses() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+
+        String createResponse = mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Long personId = JsonPath.parse(createResponse).read("$.id", Long.class);
+
+        String getResponse = mvc.perform(get(peopleUrl + "/" + personId))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+
+        DocumentContext createdPerson = JsonPath.parse(getResponse);
+        createdPerson.delete("$.addresses");
+
+        mvc.perform(putPersonCreateUpdateRequest(createdPerson))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.addresses", hasSize(0)));
     }
 
     private MockHttpServletRequestBuilder postPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
-        return post("/people")
+        return post(peopleUrl)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(personCreateRequestJson.jsonString());
     }
 
     private MockHttpServletRequestBuilder putPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
-        return put("/people")
+        return put(peopleUrl)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(personCreateRequestJson.jsonString());
     }

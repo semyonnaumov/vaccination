@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class PersonServiceImpl implements PersonService {
     private final PersonRepository personRepository;
     private final AddressRepository addressRepository;
+    private final PersonAddressRepository personAddressRepository;
     private final ContactRepository contactRepository;
     private final IdentityDocumentRepository identityDocumentRepository;
     private final RegionRepository regionRepository;
@@ -26,11 +27,13 @@ public class PersonServiceImpl implements PersonService {
     @Autowired
     public PersonServiceImpl(PersonRepository personRepository,
                              AddressRepository addressRepository,
+                             PersonAddressRepository personAddressRepository,
                              ContactRepository contactRepository,
                              IdentityDocumentRepository identityDocumentRepository,
                              RegionRepository regionRepository) {
         this.personRepository = personRepository;
         this.addressRepository = addressRepository;
+        this.personAddressRepository = personAddressRepository;
         this.contactRepository = contactRepository;
         this.identityDocumentRepository = identityDocumentRepository;
         this.regionRepository = regionRepository;
@@ -136,8 +139,9 @@ public class PersonServiceImpl implements PersonService {
 
         if (!allowUpdate) {
             boolean anyIdExists = identityDocuments.stream().anyMatch(doc -> doc.getId() != null);
-            if (anyIdExists) throw new ResourceCreationException("None of person's identityDocuments should nave an ID " +
-                    "during person creation");
+            if (anyIdExists)
+                throw new ResourceCreationException("None of person's identityDocuments should nave an ID " +
+                        "during person creation");
         }
 
         validateExactlyOnePrimaryIdentityDocument(identityDocuments);
@@ -236,8 +240,8 @@ public class PersonServiceImpl implements PersonService {
                     .build();
 
             if (allowUpdate) {
-                findRelatedAddressRecordThroughAddress(person, savedAddress)
-                        .ifPresent(personAddress -> newAddressRecord.setId(personAddress.getId()));
+                Optional<PersonAddress> savedAddressRecord = findRelatedSavedAddressRecord(person.getId(), savedAddress.getId());
+                if (savedAddressRecord.isPresent()) newAddressRecord = savedAddressRecord.get();
             }
 
             newAddressRecords.add(newAddressRecord);
@@ -284,15 +288,11 @@ public class PersonServiceImpl implements PersonService {
         transientAddress.setRegion(region);
     }
 
-    // TODO fix NPE here:
-    //  java.lang.NullPointerException: Cannot invoke "com.naumov.model.Person.getId()" because the return value of "com.naumov.model.PersonAddress.getPerson()" is null
-    private Optional<PersonAddress> findRelatedAddressRecordThroughAddress(Person person, Address address) {
-        if (person == null || person.getId() == null || address == null || address.getPersonRecords() == null)
-            return Optional.empty();
+    private Optional<PersonAddress> findRelatedSavedAddressRecord(Long personId, Long addressId) {
+        Objects.requireNonNull(personId, "Person id must not be null for PersonAddress search");
+        Objects.requireNonNull(addressId, "Address id must not be null for PersonAddress search");
 
-        return address.getPersonRecords().stream()
-                .filter(pa -> pa.getPerson().getId().equals(person.getId()))
-                .findFirst();
+        return personAddressRepository.findByPersonIdAndAddressId(personId, addressId);
     }
 
     private void deleteAddressesByIdsIfUnused(Set<Long> addressesIds) {
