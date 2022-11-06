@@ -7,6 +7,7 @@ import com.naumov.dto.rs.PersonCreateUpdateResponse;
 import com.naumov.dto.rs.PersonGetBulkResponse;
 import com.naumov.dto.rs.PersonGetResponse;
 import com.naumov.exception.ResourceManipulationException;
+import com.naumov.exception.ResourceNotFoundException;
 import com.naumov.model.Person;
 import com.naumov.service.PersonService;
 import org.apache.logging.log4j.LogManager;
@@ -41,22 +42,18 @@ public class PersonController {
         this.dtoConverter = dtoConverter;
     }
 
-    // TODO add test
     @PostMapping
     public ResponseEntity<PersonCreateUpdateResponse> createPerson(@Valid @RequestBody PersonCreateUpdateRequest personCreateRequest) {
         Person newPerson = personService.createPerson(dtoConverter.fromPersonCreateUpdateRequest(personCreateRequest));
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoConverter.toPersonCreateUpdateResponse(newPerson));
     }
 
-    // TODO add test
     @GetMapping("/{id}")
     public ResponseEntity<PersonGetResponse> getPerson(@Valid @NotNull @PathVariable("id") Long personId) {
         Person person = personService.getPerson(personId);
         return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonGetResponse(person));
     }
 
-    // return 200 or 201?
-    // TODO add test
     @PutMapping
     public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonCreateUpdateRequest personUpdateRequest) {
         Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateUpdateRequest(personUpdateRequest));
@@ -100,6 +97,18 @@ public class PersonController {
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .headers(httpHeaders)
+                .body(new DefaultErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<DefaultErrorResponse> handleNotFound(Exception e) {
+        LOGGER.error("Not found, returning {}", HttpStatus.NOT_FOUND, e);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .headers(httpHeaders)
                 .body(new DefaultErrorResponse(e.getMessage()));
     }

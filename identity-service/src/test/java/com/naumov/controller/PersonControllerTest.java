@@ -102,6 +102,45 @@ public class PersonControllerTest {
 
     @Test
     @Transactional
+    public void getPerson() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+
+        String createResponse = mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Long personId = JsonPath.parse(createResponse).read("$.id", Long.class);
+
+        mvc.perform(get(peopleUrl + "/" + personId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.name", is("Person name")))
+                .andExpect(jsonPath("$.date_of_birth", is("12-12-1996")))
+                .andExpect(jsonPath("$.is_hidden", is(false)))
+                .andExpect(jsonPath("$.addresses[0].id", notNullValue()))
+                .andExpect(jsonPath("$.addresses[0].region", is("Иркутская область")))
+                .andExpect(jsonPath("$.addresses[0].address", is("Address line")))
+                .andExpect(jsonPath("$.addresses[0].registration_address", is(true)))
+                .andExpect(jsonPath("$.contacts[0].id", notNullValue()))
+                .andExpect(jsonPath("$.contacts[0].phone_number", is("+71234567890")))
+                .andExpect(jsonPath("$.identity_documents[0].id", notNullValue()))
+                .andExpect(jsonPath("$.identity_documents[0].type", is("INNER_PASSPORT")))
+                .andExpect(jsonPath("$.identity_documents[0].full_number", is("123456789")))
+                .andExpect(jsonPath("$.identity_documents[0].issue_date", is("12-12-2007")))
+                .andExpect(jsonPath("$.identity_documents[0].is_primary", is(true)));
+    }
+
+    @Test
+    @Transactional
+    public void getNonExistingPerson() throws Exception {
+        mvc.perform(get(peopleUrl + "/" + 12))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Transactional
     public void updatePersonAddAddress() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
