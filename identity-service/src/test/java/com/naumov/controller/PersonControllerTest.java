@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         classes = Application.class
 )
 @AutoConfigureMockMvc
+@Transactional
 // TODO explore separate configurations for tests segregation
 //@TestPropertySource(locations = "classpath:application-integrationtest.properties")
 public class PersonControllerTest {
@@ -37,7 +38,6 @@ public class PersonControllerTest {
     private PersonService personService;
 
     @Test
-    @Transactional
     public void successfullyCreatePerson() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
@@ -61,7 +61,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void createPersonWithoutName() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.delete("$.name");
@@ -71,7 +70,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void createPersonWithWrongDateOfBirthFormat() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.set("$.date_of_birth", "2000.01.12");
@@ -81,7 +79,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void createPersonWithId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.put("$", "id", 3);
@@ -91,7 +88,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void createPersonWithContactId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.put("$.contacts[*]", "id", 3);
@@ -101,7 +97,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void createPersonWithAddressId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.put("$.addresses[*]", "id", 3);
@@ -111,7 +106,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void createPersonWithIdentityDocumentId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.put("$.identity_documents[*]", "id", 3);
@@ -121,7 +115,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void getPerson() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
@@ -153,14 +146,12 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void getNonExistingPerson() throws Exception {
         mvc.perform(get(peopleUrl + "/" + 12))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @Transactional
     public void updatePersonAddAddress() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
@@ -195,7 +186,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void updatePersonWithoutId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
@@ -204,7 +194,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void updatePersonRemoveAddresses() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
@@ -233,7 +222,6 @@ public class PersonControllerTest {
     }
 
     @Test
-    @Transactional
     public void getPeople() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
@@ -284,16 +272,24 @@ public class PersonControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    private MockHttpServletRequestBuilder postPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
-        return post(peopleUrl)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(personCreateRequestJson.jsonString());
-    }
+    @Test
+    public void verifyPerson() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
-    private MockHttpServletRequestBuilder putPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
-        return put(peopleUrl)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(personCreateRequestJson.jsonString());
+        mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get(peopleUrl + "/verify")
+                        .param("name", "Person name")
+                        .param("passport", "123456789"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", equalTo(true)));
+
+        mvc.perform(get(peopleUrl + "/verify")
+                        .param("name", "name")
+                        .param("passport", "passport"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", equalTo(false)));
     }
 
     private DocumentContext defaultPersonCreateUpdateRequestJson() {
@@ -328,5 +324,15 @@ public class PersonControllerTest {
         return JsonPath.parse(jsonString);
     }
 
-    // TODO add more test: negative scenarios
+    private MockHttpServletRequestBuilder postPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
+        return post(peopleUrl)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(personCreateRequestJson.jsonString());
+    }
+
+    private MockHttpServletRequestBuilder putPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {
+        return put(peopleUrl)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(personCreateRequestJson.jsonString());
+    }
 }

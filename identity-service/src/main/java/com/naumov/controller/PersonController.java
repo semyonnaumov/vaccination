@@ -82,7 +82,6 @@ public class PersonController {
         return ResponseEntity.status(HttpStatus.OK).body(body);
     }
 
-    // TODO add test
     @GetMapping("/verify")
     public boolean verifyPerson(@NotBlank @RequestParam("name") String fullName,
                                 @NotBlank @RequestParam("passport") String passportNumber) {
