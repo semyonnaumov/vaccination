@@ -62,6 +62,26 @@ public class PersonControllerTest {
 
     @Test
     @Transactional
+    public void createPersonWithoutName() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+        json.delete("$.name");
+
+        mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Transactional
+    public void createPersonWithWrongDateOfBirthFormat() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+        json.set("$.date_of_birth", "2000.01.12");
+
+        mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Transactional
     public void createPersonWithId() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
         json.put("$", "id", 3);
@@ -210,6 +230,58 @@ public class PersonControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andExpect(jsonPath("$.addresses", hasSize(0)));
+    }
+
+    @Test
+    @Transactional
+    public void getPeople() throws Exception {
+        DocumentContext json = defaultPersonCreateUpdateRequestJson();
+
+        mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isCreated());
+
+        MockHttpServletRequestBuilder requestBuilder = get(peopleUrl)
+                .param("page_number", "0")
+                .param("page_size", "2");
+
+        mvc.perform(requestBuilder)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(1)));
+
+        requestBuilder = get(peopleUrl)
+                .param("page_number", "0")
+                .param("page_size", "2")
+                .param("region", "Иркутская область");
+
+        mvc.perform(requestBuilder)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(1)));
+
+        requestBuilder = get(peopleUrl)
+                .param("page_number", "0")
+                .param("page_size", "2")
+                .param("region", "Something");
+
+        mvc.perform(requestBuilder)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        requestBuilder = get(peopleUrl)
+                .param("page_number", "0");
+
+        mvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest());
+
+        requestBuilder = get(peopleUrl)
+                .param("page_number", "0")
+                .param("page_size", "-2")
+                .param("region", "Иркутская область");
+
+        mvc.perform(requestBuilder)
+                .andExpect(status().isBadRequest());
     }
 
     private MockHttpServletRequestBuilder postPersonCreateUpdateRequest(DocumentContext personCreateRequestJson) {

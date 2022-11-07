@@ -18,18 +18,23 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.ConstraintViolationException;
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/people")
+@Validated
 public class PersonController {
     private static final Logger LOGGER = LogManager.getLogger(PersonController.class);
 
@@ -43,36 +48,31 @@ public class PersonController {
     }
 
     @PostMapping
-    public ResponseEntity<PersonCreateUpdateResponse> createPerson(@Valid @RequestBody PersonCreateUpdateRequest personCreateRequest) {
-        Person newPerson = personService.createPerson(dtoConverter.fromPersonCreateUpdateRequest(personCreateRequest));
+    public ResponseEntity<PersonCreateUpdateResponse> createPerson(@Valid @RequestBody PersonCreateUpdateRequest rq) {
+        Person newPerson = personService.createPerson(dtoConverter.fromPersonCreateUpdateRequest(rq));
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoConverter.toPersonCreateUpdateResponse(newPerson));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PersonGetResponse> getPerson(@Valid @NotNull @PathVariable("id") Long personId) {
+    public ResponseEntity<PersonGetResponse> getPerson(@NotNull @PathVariable("id") Long personId) {
         Person person = personService.getPerson(personId);
         return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonGetResponse(person));
     }
 
     @PutMapping
-    public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonCreateUpdateRequest personUpdateRequest) {
-        Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateUpdateRequest(personUpdateRequest));
+    public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonCreateUpdateRequest rq) {
+        Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateUpdateRequest(rq));
         return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonCreateUpdateResponse(updatedPerson));
     }
 
-    // TODO add test
     @GetMapping
-    public ResponseEntity<List<PersonGetBulkResponse>> getPeople(@Valid
-                                                                 @NotNull
-                                                                 @PositiveOrZero
-                                                                 @RequestParam Integer pageNumber,
-                                                                 @Valid
-                                                                 @NotNull
-                                                                 @Positive
-                                                                 @RequestParam Integer pageSize,
-                                                                 @RequestParam(name = "region") Optional<String> region) {
-        List<Person> people = region.isPresent()
-                ? personService.getPeople(region.get(), pageNumber, pageSize)
+    public ResponseEntity<List<PersonGetBulkResponse>> getPeople(@NotNull @PositiveOrZero
+                                                                 @RequestParam(name = "page_number") Integer pageNumber,
+                                                                 @NotNull @Positive
+                                                                 @RequestParam(name = "page_size") Integer pageSize,
+                                                                 @RequestParam(required = false) String region) {
+        List<Person> people = region != null
+                ? personService.getPeople(region, pageNumber, pageSize)
                 : personService.getPeople(pageNumber, pageSize);
 
         List<PersonGetBulkResponse> body = people.stream()
@@ -84,8 +84,8 @@ public class PersonController {
 
     // TODO add test
     @GetMapping("/verify")
-    public boolean verifyPerson(@Valid @NotNull @RequestParam("name") String fullName,
-                                @Valid @NotNull @RequestParam("passport") String passportNumber) {
+    public boolean verifyPerson(@NotBlank @RequestParam("name") String fullName,
+                                @NotBlank @RequestParam("passport") String passportNumber) {
         return personService.verifyPassport(fullName, passportNumber);
     }
 
@@ -109,6 +109,22 @@ public class PersonController {
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .headers(httpHeaders)
+                .body(new DefaultErrorResponse(e.getMessage()));
+    }
+
+    @ExceptionHandler({
+            MethodArgumentNotValidException.class,
+            ConstraintViolationException.class,
+            MissingServletRequestParameterException.class
+    })
+    public ResponseEntity<DefaultErrorResponse> handleValidationExceptions(Exception e) {
+        LOGGER.error("Bad request, returning {}", HttpStatus.BAD_REQUEST, e);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .headers(httpHeaders)
                 .body(new DefaultErrorResponse(e.getMessage()));
     }
