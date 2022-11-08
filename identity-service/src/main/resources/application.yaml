@@ -31,7 +31,11 @@ logging:
 #    org.hibernate.type.descriptor.sql.BasicBinder: TRACE # logging SQL query parameter values
 
 springdoc:
-  packages-to-scan: com.naumov.controller,com.naumov.dto.rs,com.naumov.dto.rq,com.naumov.dto.rs
+  packages-to-scan: >
+    com.naumov.identityservice.controller,
+    com.naumov.identityservice.dto.rs,
+    com.naumov.identityservice.dto.rq,
+    com.naumov.identityservice.dto.rs
   swagger-ui:
     path: /swagger-ui
   api-docs:

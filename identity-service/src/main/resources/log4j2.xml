@@ -13,8 +13,8 @@
             <AppenderRef ref="Console"/>
         </Root>
 
-        <!-- LOG "com.naumov*" at TRACE level -->
-        <Logger name="com.naumov" level="TRACE">
+        <!-- LOG "com.naumov.identityservice*" at TRACE level -->
+        <Logger name="com.naumov.identityservice" level="TRACE">
             <AppenderRef ref="Console"/>
         </Logger>
     </Loggers>
