@@ -1,0 +1,42 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/medical-api
+    username: medical-api
+    password: 1234
+    hikari:
+      maximum-pool-size: 12
+      minimum-idle: 1
+      connection-test-query: SELECT 1
+      validation-timeout: 3500
+      max-lifetime: 1200000
+      idle-timeout: 13000
+      connection-timeout: 100000
+  jpa:
+    open-in-view: false
+    hibernate.ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true # indents SQL
+        jdbc.batch_size: 10 # production settings
+        order_updates: true # production settings
+        order_inserts: true # production settings
+  liquibase:
+    enabled: false # TODO switch to true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG # logging generated SQL queries
+#    org.hibernate.type.descriptor.sql.BasicBinder: TRACE # logging SQL query parameter values
+
+springdoc:
+  packages-to-scan: >
+    com.naumov.medicalapi.controller,
+    com.naumov.medicalapi.dto.rs,
+    com.naumov.medicalapi.dto.rq,
+    com.naumov.medicalapi.dto
+  swagger-ui:
+    path: /swagger-ui
+  api-docs:
+    path: /api-docs
