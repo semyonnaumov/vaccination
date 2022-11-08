@@ -35,7 +35,7 @@ springdoc:
     com.naumov.identityservice.controller,
     com.naumov.identityservice.dto.rs,
     com.naumov.identityservice.dto.rq,
-    com.naumov.identityservice.dto.rs
+    com.naumov.identityservice.dto
   swagger-ui:
     path: /swagger-ui
   api-docs:
