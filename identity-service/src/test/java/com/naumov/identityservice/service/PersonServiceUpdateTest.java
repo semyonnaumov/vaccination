@@ -1,10 +1,8 @@
 package com.naumov.identityservice.service;
 
 import com.naumov.identityservice.EntityTestUtil;
-import com.naumov.identityservice.exception.ResourceConflictException;
-import com.naumov.identityservice.exception.ResourceCreationException;
+import com.naumov.identityservice.exception.BadInputException;
 import com.naumov.identityservice.exception.ResourceNotFoundException;
-import com.naumov.identityservice.exception.ResourceUpdateException;
 import com.naumov.identityservice.model.IdentityDocument;
 import com.naumov.identityservice.model.Person;
 import com.naumov.identityservice.model.Region;
@@ -43,7 +41,7 @@ class PersonServiceUpdateTest {
     void updateEntityWithoutId() {
         Person updatedPerson = simplePersonBuilder().build();
         assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
-                .isInstanceOf(ResourceUpdateException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test
@@ -94,7 +92,7 @@ class PersonServiceUpdateTest {
                 .build();
 
         addContact(updatedPerson, "+70987654321");
-        addIdentityDocument(updatedPerson, IdentityDocument.DocumentType.MEDICAL_INSURANCE, "00000", "2000-12-12", false);
+        addIdentityDocument(updatedPerson, IdentityDocument.DocumentType.FOREIGN_PASSPORT, "00000", "2000-12-12", false);
 
         personService.updatePerson(updatedPerson);
 
@@ -150,7 +148,7 @@ class PersonServiceUpdateTest {
 
         updatedPerson.setIdentityDocuments(Collections.emptyList());
         assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
-                .isInstanceOf(ResourceConflictException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test
@@ -194,7 +192,7 @@ class PersonServiceUpdateTest {
         addContact(updatedPerson, savedPerson.getContacts().get(0).getPhoneNumber());
 
         assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
-                .isInstanceOf(ResourceCreationException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test
@@ -213,7 +211,7 @@ class PersonServiceUpdateTest {
                 .addressId(savedPerson.getAddressRecords().get(0).getAddress().getId())
                 .build();
 
-        addIdentityDocument(-1L, updatedPerson, IdentityDocument.DocumentType.MEDICAL_INSURANCE, "00000", "2000-12-12", false);
+        addIdentityDocument(-1L, updatedPerson, IdentityDocument.DocumentType.FOREIGN_PASSPORT, "00000", "2000-12-12", false);
 
         assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -238,7 +236,7 @@ class PersonServiceUpdateTest {
         addIdentityDocument(updatedPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", false);
 
         assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
-                .isInstanceOf(ResourceCreationException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test
@@ -260,7 +258,7 @@ class PersonServiceUpdateTest {
         addIdentityDocument(updatedPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "22222", "1999-12-12", true);
 
         assertThatThrownBy(() -> personService.updatePerson(updatedPerson))
-                .isInstanceOf(ResourceConflictException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test

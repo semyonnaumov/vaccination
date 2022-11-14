@@ -273,23 +273,29 @@ public class PersonControllerTest {
     }
 
     @Test
-    public void verifyPerson() throws Exception {
+    public void findPerson() throws Exception {
         DocumentContext json = defaultPersonCreateUpdateRequestJson();
 
-        mvc.perform(postPersonCreateUpdateRequest(json))
-                .andExpect(status().isCreated());
+        String createResponse = mvc.perform(postPersonCreateUpdateRequest(json))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        mvc.perform(get(peopleUrl + "/verify")
+        Long personId = JsonPath.parse(createResponse).read("$.id", Long.class);
+
+        mvc.perform(get(peopleUrl + "/find")
                         .param("name", "Person name")
-                        .param("passport", "123456789"))
+                        .param("doc_type", "INNER_PASSPORT")
+                        .param("doc_number", "123456789"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", equalTo(true)));
+                .andExpect(jsonPath("$", equalTo(personId.intValue())));
 
-        mvc.perform(get(peopleUrl + "/verify")
+        mvc.perform(get(peopleUrl + "/find")
                         .param("name", "name")
-                        .param("passport", "passport"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", equalTo(false)));
+                        .param("doc_type", "INNER_PASSPORT")
+                        .param("doc_number", "123456789"))
+                .andExpect(status().isNotFound());
     }
 
     private DocumentContext defaultPersonCreateUpdateRequestJson() {

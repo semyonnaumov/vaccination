@@ -49,8 +49,8 @@ public class IdentityDocument implements IdentifiableEntity {
     public enum DocumentType {
         INNER_PASSPORT,
         INTERNATIONAL_PASSPORT,
-        PENSION_ID,
-        MEDICAL_INSURANCE
+        DRIVER_LICENSE,
+        FOREIGN_PASSPORT
     }
 
     // Manual builder since we want to preserve field defaults (Lombok's builder overwrites them)

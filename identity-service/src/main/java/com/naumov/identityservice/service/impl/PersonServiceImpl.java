@@ -1,9 +1,7 @@
 package com.naumov.identityservice.service.impl;
 
-import com.naumov.identityservice.exception.ResourceConflictException;
-import com.naumov.identityservice.exception.ResourceCreationException;
+import com.naumov.identityservice.exception.BadInputException;
 import com.naumov.identityservice.exception.ResourceNotFoundException;
-import com.naumov.identityservice.exception.ResourceUpdateException;
 import com.naumov.identityservice.model.*;
 import com.naumov.identityservice.repository.*;
 import com.naumov.identityservice.service.PersonService;
@@ -58,8 +56,8 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public Person createPerson(Person newPerson) {
-        if (newPerson == null) throw new ResourceCreationException("Created person cannot be null");
-        if (newPerson.getId() != null) throw new ResourceCreationException("Created person cannot have an ID");
+        if (newPerson == null) throw new BadInputException("Created person cannot be null");
+        if (newPerson.getId() != null) throw new BadInputException("Created person cannot have an ID");
 
         validateIdentityDocuments(newPerson.getIdentityDocuments(), false);
         validateContacts(newPerson.getContacts(), false);
@@ -94,9 +92,9 @@ public class PersonServiceImpl implements PersonService {
     @Override
     @Transactional
     public Person updatePerson(Person updatedPerson) {
-        if (updatedPerson == null) throw new ResourceUpdateException("Updated person cannot be null");
+        if (updatedPerson == null) throw new BadInputException("Updated person cannot be null");
         Long personId = updatedPerson.getId();
-        if (personId == null) throw new ResourceUpdateException("Updated person must have an id");
+        if (personId == null) throw new BadInputException("Updated person must have an id");
 
         // loads the old addresses eagerly as well
         Person originalPerson = personRepository.findById(personId).orElseThrow(() ->
@@ -135,12 +133,12 @@ public class PersonServiceImpl implements PersonService {
     }
 
     private void validateIdentityDocuments(List<IdentityDocument> identityDocuments, boolean allowUpdate) {
-        if (identityDocuments == null) throw new ResourceConflictException("Person's identityDocuments cannot be null");
+        if (identityDocuments == null) throw new BadInputException("Person's identityDocuments cannot be null");
 
         if (!allowUpdate) {
             boolean anyIdExists = identityDocuments.stream().anyMatch(doc -> doc.getId() != null);
             if (anyIdExists)
-                throw new ResourceCreationException("None of person's identityDocuments should nave an ID " +
+                throw new BadInputException("None of person's identityDocuments should nave an ID " +
                         "during person creation");
         }
 
@@ -149,7 +147,7 @@ public class PersonServiceImpl implements PersonService {
         for (IdentityDocument id : identityDocuments) {
             Long identityDocumentId = id.getId();
             if (identityDocumentId != null) {
-                if (!allowUpdate) throw new ResourceCreationException("Person's identity document with type=" +
+                if (!allowUpdate) throw new BadInputException("Person's identity document with type=" +
                         id.getType() + " and fullNumber=" + id.getFullNumber() +
                         " was requested for creation but contains non-null id (id=" + identityDocumentId + ")");
 
@@ -158,7 +156,7 @@ public class PersonServiceImpl implements PersonService {
                             + " was requested for update but does not exist");
                 }
             } else if (identityDocumentRepository.existsByTypeAndFullNumber(id.getType(), id.getFullNumber())) {
-                throw new ResourceCreationException("Person's identity document with type=" + id.getType()
+                throw new BadInputException("Person's identity document with type=" + id.getType()
                         + " and fullNumber=" + id.getFullNumber() + " was requested for creation but already exists");
             }
         }
@@ -170,16 +168,16 @@ public class PersonServiceImpl implements PersonService {
                 .count();
 
         if (count != 1) {
-            throw new ResourceConflictException("Person must have exactly one registration address");
+            throw new BadInputException("Person must have exactly one registration address");
         }
     }
 
     private void validateContacts(List<Contact> contacts, boolean allowUpdate) {
-        if (contacts == null) throw new ResourceConflictException("Person's contacts cannot be null");
+        if (contacts == null) throw new BadInputException("Person's contacts cannot be null");
 
         if (!allowUpdate) {
             boolean anyIdExists = contacts.stream().anyMatch(contact -> contact.getId() != null);
-            if (anyIdExists) throw new ResourceCreationException("None of person's contacts should nave an ID " +
+            if (anyIdExists) throw new BadInputException("None of person's contacts should nave an ID " +
                     "during person creation");
         }
 
@@ -187,7 +185,7 @@ public class PersonServiceImpl implements PersonService {
             Long contactId = contact.getId();
             String phoneNumber = contact.getPhoneNumber();
             if (contactId != null) {
-                if (!allowUpdate) throw new ResourceCreationException("Person's contact with phoneNumber=" +
+                if (!allowUpdate) throw new BadInputException("Person's contact with phoneNumber=" +
                         phoneNumber + " was requested for creation but contains non-null id (id=" + contact + ")");
 
                 if (!contactRepository.existsById(contactId)) {
@@ -195,24 +193,24 @@ public class PersonServiceImpl implements PersonService {
                             " was requested for update but does not exists");
                 }
             } else if (contactRepository.existsByPhoneNumber(phoneNumber)) {
-                throw new ResourceCreationException("Person's contact with phoneNumber=" + phoneNumber
+                throw new BadInputException("Person's contact with phoneNumber=" + phoneNumber
                         + " was requested for creation but already exists");
             }
         }
     }
 
     private void validateAddressRecords(List<PersonAddress> addressRecords, boolean allowUpdate) {
-        if (addressRecords == null) throw new ResourceConflictException("Person's addressRecords cannot be null");
+        if (addressRecords == null) throw new BadInputException("Person's addressRecords cannot be null");
 
         if (!allowUpdate) {
             boolean anyAddressRecordIdExists = addressRecords.stream().anyMatch(contact -> contact.getId() != null);
-            if (anyAddressRecordIdExists) throw new ResourceCreationException("None of person's addressRecords " +
+            if (anyAddressRecordIdExists) throw new BadInputException("None of person's addressRecords " +
                     "should nave an ID during person creation");
 
             boolean anyAddressIdExists = addressRecords.stream()
                     .map(PersonAddress::getAddress)
                     .anyMatch(contact -> contact.getId() != null);
-            if (anyAddressIdExists) throw new ResourceCreationException("None of person's addresses " +
+            if (anyAddressIdExists) throw new BadInputException("None of person's addresses " +
                     "should nave an ID during person creation");
         }
 
@@ -221,7 +219,7 @@ public class PersonServiceImpl implements PersonService {
                 .count();
 
         if (count > 1) {
-            throw new ResourceConflictException("Person cannot have multiple registration addresses");
+            throw new BadInputException("Person cannot have multiple registration addresses");
         }
     }
 
@@ -252,15 +250,15 @@ public class PersonServiceImpl implements PersonService {
 
     private Address saveOrLoadAddress(Address transientAddress, boolean allowUpdate) {
         if (transientAddress == null)
-            throw new ResourceConflictException("Person address must not be null");
+            throw new BadInputException("Person address must not be null");
         if (transientAddress.getAddress() == null)
-            throw new ResourceConflictException("Person address must contain address");
+            throw new BadInputException("Person address must contain address");
 
         loadAndSetRegion(transientAddress);
 
         Long addressId = transientAddress.getId();
         if (addressId != null) {
-            if (!allowUpdate) throw new ResourceCreationException("Person's address was requested for creation " +
+            if (!allowUpdate) throw new BadInputException("Person's address was requested for creation " +
                     "but contains non-null id (id=" + addressId + ")");
 
             Optional<Address> foundAddress = addressRepository.findById(addressId);
@@ -280,11 +278,11 @@ public class PersonServiceImpl implements PersonService {
 
     private void loadAndSetRegion(Address transientAddress) {
         if (transientAddress.getRegion() == null || transientAddress.getRegion().getName() == null)
-            throw new ResourceConflictException("Person address must contain region with name");
+            throw new BadInputException("Person address must contain region with name");
 
         String regionName = transientAddress.getRegion().getName();
         Region region = regionRepository.findByName(regionName).orElseThrow(() ->
-                new ResourceConflictException("Person's address contains non-existing region with name=" + regionName));
+                new BadInputException("Person's address contains non-existing region with name=" + regionName));
         transientAddress.setRegion(region);
     }
 
@@ -351,7 +349,14 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean verifyPassport(String fullName, String passportNumber) {
-        return personRepository.verifyPassport(fullName, passportNumber);
+    public Optional<Long> findByNameAndDocument(String fullName, String docType, String docNumber) {
+        IdentityDocument.DocumentType documentType;
+        try {
+            documentType = IdentityDocument.DocumentType.valueOf(docType);
+        } catch (Exception e) {
+            throw new BadInputException("Document type \"" + docType + "\" does not exist");
+        }
+
+        return personRepository.findByNameAndDocument(fullName, documentType, docNumber);
     }
 }

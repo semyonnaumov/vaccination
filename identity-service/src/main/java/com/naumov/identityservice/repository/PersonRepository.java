@@ -1,5 +1,6 @@
 package com.naumov.identityservice.repository;
 
+import com.naumov.identityservice.model.IdentityDocument;
 import com.naumov.identityservice.model.Person;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -60,10 +61,10 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             "ORDER BY p.id")
     List<Person> findAllByIdsFetchIdentityDocuments(List<Long> ids);
 
-    @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Person p " +
+    @Query("SELECT p.id FROM Person p " +
             "JOIN p.identityDocuments id " +
             "WHERE p.name = :fullName " +
-            "AND id.type = 'INNER_PASSPORT' " +
-            "AND id.fullNumber = :passportNumber")
-    boolean verifyPassport(String fullName, String passportNumber);
+            "AND id.type = :docType " +
+            "AND id.fullNumber = :docNumber")
+    Optional<Long> findByNameAndDocument(String fullName, IdentityDocument.DocumentType docType, String docNumber);
 }

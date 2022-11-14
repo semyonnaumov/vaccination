@@ -1,8 +1,7 @@
 package com.naumov.identityservice.service;
 
 import com.naumov.identityservice.EntityTestUtil;
-import com.naumov.identityservice.exception.ResourceConflictException;
-import com.naumov.identityservice.exception.ResourceCreationException;
+import com.naumov.identityservice.exception.BadInputException;
 import com.naumov.identityservice.model.Address;
 import com.naumov.identityservice.model.IdentityDocument;
 import com.naumov.identityservice.model.Person;
@@ -57,7 +56,7 @@ class PersonServiceCreateTest {
 
         addIdentityDocument(newPerson, IdentityDocument.DocumentType.INNER_PASSPORT, "12345", "1999-12-12", true);
         addIdentityDocument(newPerson, IdentityDocument.DocumentType.INTERNATIONAL_PASSPORT, "0123401234", "2001-01-01", false);
-        addIdentityDocument(newPerson, IdentityDocument.DocumentType.PENSION_ID, "2626262626262626", "2021-12-21", false);
+        addIdentityDocument(newPerson, IdentityDocument.DocumentType.DRIVER_LICENSE, "2626262626262626", "2021-12-21", false);
 
         Person savedPerson = personService.createPerson(newPerson);
 
@@ -181,7 +180,7 @@ class PersonServiceCreateTest {
         Person newPerson = simplePersonBuilder().build();
         newPerson.setIdentityDocuments(null);
         assertThatThrownBy(() -> personService.createPerson(newPerson))
-                .isInstanceOf(ResourceConflictException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test
@@ -193,19 +192,19 @@ class PersonServiceCreateTest {
 
         Person p2 = simplePersonBuilder().build();
         assertThatThrownBy(() -> personService.createPerson(p2))
-                .isInstanceOf(ResourceCreationException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     @Test
     void createTwoPeopleWithTheSameContact() {
         Person p1 = simplePersonBuilder()
-                .documentType(IdentityDocument.DocumentType.PENSION_ID)
+                .documentType(IdentityDocument.DocumentType.DRIVER_LICENSE)
                 .build();
         personService.createPerson(p1);
 
         Person p2 = simplePersonBuilder().build();
         assertThatThrownBy(() -> personService.createPerson(p2))
-                .isInstanceOf(ResourceCreationException.class);
+                .isInstanceOf(BadInputException.class);
     }
 
     private SimplePersonBuilder simplePersonBuilder() {

@@ -6,7 +6,7 @@ import com.naumov.identityservice.dto.rs.DefaultErrorResponse;
 import com.naumov.identityservice.dto.rs.PersonCreateUpdateResponse;
 import com.naumov.identityservice.dto.rs.PersonGetBulkResponse;
 import com.naumov.identityservice.dto.rs.PersonGetResponse;
-import com.naumov.identityservice.exception.ResourceManipulationException;
+import com.naumov.identityservice.exception.BadInputException;
 import com.naumov.identityservice.exception.ResourceNotFoundException;
 import com.naumov.identityservice.model.Person;
 import com.naumov.identityservice.service.PersonService;
@@ -30,6 +30,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -59,6 +60,16 @@ public class PersonController {
         return ResponseEntity.status(HttpStatus.OK).body(dtoConverter.toPersonGetResponse(person));
     }
 
+    @GetMapping("/find")
+    public ResponseEntity<Long> findPerson(@NotBlank @RequestParam("name") String fullName,
+                                           @NotBlank @RequestParam("doc_type") String docType,
+                                           @NotBlank @RequestParam("doc_number") String docNumber) {
+        Optional<Long> optionalId = personService.findByNameAndDocument(fullName, docType, docNumber);
+
+        return optionalId.map(id -> ResponseEntity.status(HttpStatus.OK).body(id))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
     @PutMapping
     public ResponseEntity<PersonCreateUpdateResponse> updatePerson(@Valid @RequestBody PersonCreateUpdateRequest rq) {
         Person updatedPerson = personService.updatePerson(dtoConverter.fromPersonCreateUpdateRequest(rq));
@@ -82,13 +93,7 @@ public class PersonController {
         return ResponseEntity.status(HttpStatus.OK).body(body);
     }
 
-    @GetMapping("/verify")
-    public boolean verifyPerson(@NotBlank @RequestParam("name") String fullName,
-                                @NotBlank @RequestParam("passport") String passportNumber) {
-        return personService.verifyPassport(fullName, passportNumber);
-    }
-
-    @ExceptionHandler({ResourceManipulationException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({BadInputException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<DefaultErrorResponse> handleBadRequest(Exception e) {
         LOGGER.error("Bad request, returning {}", HttpStatus.BAD_REQUEST, e);
 
